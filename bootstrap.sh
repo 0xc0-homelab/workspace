@@ -7,6 +7,10 @@ ORG=0xc0-homelab
 
 clone() {  # $1 = repo name, $2 = local directory
   if [ -d "$2/.git" ]; then
+    if [ -z "$(git -C "$2" remote)" ]; then
+      echo "==> $2: local repo with no remote yet, skipping"
+      return
+    fi
     echo "==> $2: pull"
     git -C "$2" pull --ff-only
   elif [ -d "$2" ] && [ -n "$(ls -A "$2" 2>/dev/null)" ]; then
