@@ -30,8 +30,16 @@ Reserved so they never overlap:
 | workloads | vm-rke2     | 4    | 12 GB | 10.10.16.20  | RKE2 (phase 6)                    |
 | data      | vm-data     | 2    | 8 GB  | 10.10.32.10  | Postgres, Redis                   |
 
-The host holds `.1` in every zone, is the router and the firewall, and runs
-nothing but Proxmox.
+The host (`pve-1`, `pve.0xc0.cc`) holds `.1` in every zone and is the router
+and the firewall. `eno1` keeps the public IP; the zone bridges are internal,
+with no physical port, and egress is NAT through `eno1` — Hetzner drops
+unknown MACs on the public interface, so guests never bridge onto it.
+
+Besides Proxmox, the host runs the base services, **outside IaC**:
+
+- **Traefik** — reverse proxy for the Proxmox UI, PBS and RustFS.
+- **RustFS** — S3-compatible store holding the OpenTofu state (`s3.0xc0.cc`).
+- **PBS** — backups, with the datastore on a Hetzner Storage Box.
 
 ## Transit
 
@@ -65,7 +73,8 @@ Nobody initiates towards mgmt.
 
 ## Stack
 
-Proxmox VE + ZFS mirror on a Hetzner dedicated server · Cloudflare Free
+Proxmox VE 9 on a Hetzner dedicated server, 2× NVMe in mdadm RAID 0 ·
+PBS to a Hetzner Storage Box · RustFS for the OpenTofu state · Cloudflare Free
 (Tunnel, Access, WARP) · NGINX + open-appsec · Packer + OpenTofu + Ansible ·
 GitHub Actions with a self-hosted runner · SOPS+age → Vault over OIDC ·
 Prometheus + Grafana · Hetzner Rescue as the emergency path.
@@ -82,7 +91,8 @@ the `bpg/proxmox` provider.
 3. **Platform** — vm-platform with alerts to the phone, vm-vault with OIDC and
    a progressive migration.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
-5. **HA** — node 2, QDevice, ZFS replication, migration to SDN.
+5. **HA** — node 2, QDevice, storage replication, migration to SDN. Node 1
+   has no ZFS (mdadm RAID 0), so the replication model is redesigned here.
 6. **Kubernetes** — RKE2 and ArgoCD. The WAF moves to the ingress, never duplicated.
 
 **Non-negotiable: the tested restore in phase 2.** If the RTO is not measured
@@ -93,7 +103,7 @@ in writing, it is not tested.
 | Discarded           | Reason                                               |
 |---------------------|------------------------------------------------------|
 | WireGuard           | Cloudflare Access + WARP already covers admin access |
-| Traefik             | with no containers alongside it adds nothing over NGINX |
+| Traefik as ingress  | with no containers alongside it adds nothing over NGINX; it runs on the host only as the reverse proxy for Proxmox, PBS and RustFS, outside IaC |
 | Coraza              | open-appsec avoids hand-tuning the CRS               |
 | BunkerWeb           | stores its configuration in SQLite                   |
 | OPNsense, VyOS      | fragile network hop and immature providers           |
@@ -108,6 +118,12 @@ in writing, it is not tested.
 ## Accepted risks
 
 - Single piece of hardware until phase 5: a hardware failure is an RTO of hours.
+- Disks in RAID 0 (operator decision, 2026-09-23): one NVMe failure loses the
+  whole node. Recovery is a reinstall plus a restore from PBS on the Storage
+  Box, which is why that restore has to be tested and timed.
+- The Proxmox UI, PBS and RustFS are reachable from the internet through
+  Traefik on the host. RustFS in particular is open until the CI runner exists
+  (0xc0-homelab/.github#13).
 - Dependency on Cloudflare to get in, with Hetzner Rescue as the way out.
 - Six zones is a fair amount of surface for a single operator.
 - open-appsec is a piece never operated before. Its documentation is sparse and
