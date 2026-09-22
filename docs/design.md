@@ -31,9 +31,9 @@ Reserved so they never overlap:
 | data      | vm-data     | 2    | 8 GB  | 10.10.32.10  | Postgres, Redis                   |
 
 The host (`pve-1`, `pve.0xc0.cc`) holds `.1` in every zone and is the router
-and the firewall. `eno1` keeps the public IP; the zone bridges are internal,
-with no physical port, and egress is NAT through `eno1` — Hetzner drops
-unknown MACs on the public interface, so guests never bridge onto it.
+and the firewall. `eno1` keeps the public IP. Each zone is an SDN VNet with no
+physical port, and egress is SNAT through `eno1` — Hetzner drops unknown MACs
+on the public interface, so guests never bridge onto it.
 
 Besides Proxmox, the host runs the base services, **outside IaC**:
 
@@ -59,7 +59,14 @@ The normative matrix, in machine-readable form, lives in
 | platform  | internet                        | 443                            |
 | data      | —                               | initiates nothing              |
 
-Node under DROP policy, only 22 and 8006 from `10.10.0.0/22`.
+| internet  | node                            | 443 — Traefik, until the CI runner exists |
+
+Node under DROP policy: 22 and 8006 from `10.10.0.0/22`, plus 443 from the
+internet for Traefik (Proxmox UI, PBS, RustFS) until the CI runner exists.
+
+The DROP goes on **last** in phase 1, once admin access through `vm-access`
+and WARP is proven. Before that, `10.10.0.0/22` has no hosts in it, and the
+DROP would lock the operator out of the node.
 Nobody initiates towards mgmt.
 
 ## Flows
@@ -79,8 +86,10 @@ PBS to a Hetzner Storage Box · RustFS for the OpenTofu state · Cloudflare Free
 GitHub Actions with a self-hosted runner · SOPS+age → Vault over OIDC ·
 Prometheus + Grafana · Hetzner Rescue as the emergency path.
 
-Bridges in Ansible for now, SDN with node 2. Native Proxmox firewall through
-the `bpg/proxmox` provider.
+Zones are Proxmox SDN from phase 1 (operator decision, 2026-09-23): one
+Simple zone, a VNet and a subnet per zone, the host as `.1` and SNAT for
+egress, all in OpenTofu through `bpg/proxmox`. Zones spanning nodes come with
+node 2. Native Proxmox firewall through the same provider.
 
 ## Phases
 
@@ -91,7 +100,7 @@ the `bpg/proxmox` provider.
 3. **Platform** — vm-platform with alerts to the phone, vm-vault with OIDC and
    a progressive migration.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
-5. **HA** — node 2, QDevice, storage replication, migration to SDN. Node 1
+5. **HA** — node 2, QDevice, storage replication, SDN zones across both nodes. Node 1
    has no ZFS (mdadm RAID 0), so the replication model is redesigned here.
 6. **Kubernetes** — RKE2 and ArgoCD. The WAF moves to the ingress, never duplicated.
 
@@ -107,7 +116,7 @@ in writing, it is not tested.
 | Coraza              | open-appsec avoids hand-tuning the CRS               |
 | BunkerWeb           | stores its configuration in SQLite                   |
 | OPNsense, VyOS      | fragile network hop and immature providers           |
-| VLANs now           | they arrive with SDN in phase 5; bridges for now     |
+| VLAN zones now      | one node: an SDN Simple zone isolates the zones; VLAN or EVPN zones come with node 2 |
 | Terraform Stacks    | paid                                                 |
 | OpenBao             | Vault's BSL does not affect this case                |
 | Loki, Tempo now     | Prometheus + Grafana only, for now                   |
