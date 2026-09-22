@@ -2,6 +2,9 @@
 
 Status: **closed**. Not reopened without an explicit decision from the operator.
 
+This file records the decisions. How the pieces fit together, with diagrams,
+is in [`infrastructure/docs/architecture.md`](https://github.com/0xc0-homelab/infrastructure/blob/main/docs/architecture.md).
+
 ## Addressing
 
 | Group     | Supernet      | Zones          |
