@@ -123,6 +123,8 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
   names, code comments, commit messages, branch names, PR titles and bodies,
   docs. The conversation with the operator is in Spanish.
 - No `tofu apply`, `tofu destroy` or `ansible-playbook` without `--check`.
+- OpenTofu is **always** written as modules. A root only calls modules; each
+  root has its own state key under `homelab/` in RustFS, never a shared one.
 - Secrets with SOPS+age. An unencrypted file holding sensitive material is a bug.
 - Before proposing any IP or subnet, check it against
   `infrastructure/docs/zones.md`. There are reserved ranges that are off limits.
