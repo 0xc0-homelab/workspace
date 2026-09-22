@@ -35,6 +35,24 @@ A downstream change is not merged until the upstream one is applied.
 4. `infrastructure` and `.github`: `main` only, PR required, apply behind manual
    approval. The human runs the apply, never you.
 
+## Tracking — mandatory
+
+The org project board (`github.com/orgs/0xc0-homelab/projects/1`) is the source
+of truth for the state of work. **No work starts without an issue on it.**
+
+1. Before editing anything, find the issue for the task, or open one in the
+   repo it belongs to and add it to the board with `Phase` set.
+2. Move it to `In Progress` when you start, `Blocked` when it waits on
+   something outside the task.
+3. Every PR body links it: `Closes #N`, or `Refs owner/repo#N` from a sibling
+   repo. A PR without a linked issue fails the `issue` check.
+4. It closes through the PR that finishes it, not by hand.
+
+A request that arrives mid-conversation gets its issue first. The board is
+loaded into every Claude Code session by the plugin's `SessionStart` hook;
+`/project-status` reads it on demand. Decisions do not live on the board —
+they stay in `docs/design.md`.
+
 ## Commits
 
 Conventional Commits, in English, in every repo.
