@@ -132,9 +132,20 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 ## Status
 
 The design is closed (`docs/design.md`). What exists so far is configuration
-scaffolding: CLAUDE.md files, the zone matrix and the agents. **Not a single
-line of Terraform, Packer or Ansible exists yet.** None of the repos has
-`git init` or a remote.
+scaffolding: CLAUDE.md files, the zone matrix, the agents and the skills.
+**Not a single line of Terraform, Packer or Ansible exists yet.**
 
-Next step: generate `infrastructure/firewall.tf` from the matrix in
+All five repos are initialised locally on `main` with an initial commit, but
+**none of them has a remote**: the organization is still empty. Nothing can be
+pushed until the repos exist on GitHub.
+
+Two consequences worth remembering:
+
+- The `homelab` plugin is declared in `.claude/settings.json` but its
+  marketplace source repo does not exist yet, so the agents, the skills and
+  the hooks are **not active**. The guardrails are written, not enforced.
+- `bootstrap.sh` cannot clone anything yet either.
+
+Next steps, in order: create the org repos with Terraform from `.github/`,
+push, then generate `infrastructure/firewall.tf` from the matrix in
 `infrastructure/docs/zones.md`.
