@@ -6,6 +6,10 @@
 	name = sergioaten
 	email = me@sergioaten.cloud
 
+[core]
+	# The org's own SSH key, and only that one, for every repo in this tree.
+	sshCommand = ssh -i ~/.ssh/0xc0-homelab -o IdentitiesOnly=yes
+
 [init]
 	# Every repo in this org is main-only.
 	defaultBranch = main
