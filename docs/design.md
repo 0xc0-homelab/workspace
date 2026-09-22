@@ -110,6 +110,15 @@ node 2. Native Proxmox firewall through the same provider.
 **Non-negotiable: the tested restore in phase 2.** If the RTO is not measured
 in writing, it is not tested.
 
+## Secrets
+
+SOPS+age, and the encrypted files are **committed** (operator decision,
+2026-09-23), even though the repos are public. Each file is encrypted to the
+operator's key and to that repo's own CI key, which is the only Actions secret
+the repo holds. CI decrypts with SOPS; no decrypted copies live in GitHub. From
+phase 2 the CI keys move to `vm-ci`; from phase 3 secrets migrate to Vault over
+OIDC.
+
 ## Discarded — do not propose
 
 | Discarded           | Reason                                               |
