@@ -1,0 +1,44 @@
+{
+  "$schema": "https://code.claude.com/schemas/settings.json",
+  "extraKnownMarketplaces": {
+    "0xc0-homelab": {
+      "source": { "source": "github", "repo": "0xc0-homelab/claude-config" }
+    }
+  },
+  "enabledPlugins": {
+    "homelab@0xc0-homelab": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(tofu plan:*)",
+      "Bash(tofu validate:*)",
+      "Bash(tofu fmt:*)",
+      "Bash(tofu show:*)",
+      "Bash(packer validate:*)",
+      "Bash(packer fmt:*)",
+      "Bash(ansible-lint:*)",
+      "Bash(ansible-inventory:*)",
+      "Bash(docker compose config:*)",
+      "Bash(sops --encrypt:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)"
+    ],
+    "deny": [
+      "Bash(tofu apply:*)",
+      "Bash(tofu destroy:*)",
+      "Bash(terraform apply:*)",
+      "Bash(terraform destroy:*)",
+      "Read(./**/*.tfstate)",
+      "Read(./**/*.tfstate.backup)",
+      "Read(./**/*.auto.tfvars)",
+      "Read(./**/vault-pass*)",
+      "Read(./**/*.age)",
+      "Read(./**/age.key*)",
+      "Read(./**/id_ed25519)",
+      "Read(./**/id_rsa)"
+    ]
+  }
+}

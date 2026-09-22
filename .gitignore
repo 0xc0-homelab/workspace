@@ -1,0 +1,15 @@
+# The other org repos are cloned in here by bootstrap.sh. They are independent
+# git repos and must never be committed into workspace.
+#
+# /.github/ is load-bearing: without it, another repo's contents would sit at a
+# path GitHub reads for workflows, CODEOWNERS and community health files.
+/.github/
+/claude-config/
+/deployments/
+/infrastructure/
+/app-*/
+
+# Personal mise overrides, never shared.
+mise.local.toml
+
+.DS_Store

@@ -1,0 +1,15 @@
+# Identity and git defaults for every 0xc0-homelab repo.
+# Wired in by a single includeIf in ~/.gitconfig: see CLAUDE.md, "Git identity".
+# Versioned here so the settings travel with the workspace clone.
+
+[user]
+	name = sergioaten
+	email = me@sergioaten.cloud
+
+[init]
+	# Every repo in this org is main-only.
+	defaultBranch = main
+
+[pull]
+	# Matches what bootstrap.sh does: never an implicit merge commit.
+	ff = only
