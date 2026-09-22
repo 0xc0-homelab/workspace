@@ -21,7 +21,7 @@ something requires it, say so and stop. Each phase is detailed in
 | `.github/`       | `.github`         | org Terraform + reusable workflows              |
 | `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
-| `deployments/`   | `deployments`     | compose/ per VM, clusters/prod/ (Flux, phase 6) |
+| `deployments/`   | `deployments`     | compose/ per VM, clusters/prod/ (ArgoCD, phase 6) |
 | `app-*/`         | various           | applications                                    |
 
 Dependency order: `.github` → `infrastructure` → `deployments` → `app-*`.

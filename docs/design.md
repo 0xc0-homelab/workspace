@@ -83,7 +83,7 @@ the `bpg/proxmox` provider.
    a progressive migration.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
 5. **HA** — node 2, QDevice, ZFS replication, migration to SDN.
-6. **Kubernetes** — RKE2 and Flux. The WAF moves to the ingress, never duplicated.
+6. **Kubernetes** — RKE2 and ArgoCD. The WAF moves to the ingress, never duplicated.
 
 **Non-negotiable: the tested restore in phase 2.** If the RTO is not measured
 in writing, it is not tested.
@@ -103,6 +103,7 @@ in writing, it is not tested.
 | Loki, Tempo now     | Prometheus + Grafana only, for now                   |
 | Two K8s clusters    | same hardware, adds no isolation                     |
 | Bug bounty lab      | reserved range, out of scope                         |
+| Flux                | operator decision (2026-09-22): GitOps is ArgoCD     |
 
 ## Accepted risks
 
@@ -117,4 +118,4 @@ in writing, it is not tested.
 
 `infrastructure` and `.github`: `main` only, PR required, apply behind manual
 approval. `app-*`: test→prod promotion of the same digest.
-Flux will point at `deployments/clusters/prod/`.
+ArgoCD will point at `deployments/clusters/prod/`.
