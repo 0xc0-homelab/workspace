@@ -98,6 +98,9 @@ shared defaults, and a single `includeIf` in `~/.gitconfig` points at it:
 	path = ~/git/github/0xc0-homelab/workspace/gitconfig
 ```
 
+The same file pins the SSH key: `core.sshCommand` uses `~/.ssh/0xc0-homelab`
+with `IdentitiesOnly`, so git never offers another key to these remotes.
+
 Scoping by path means a repo cloned later by `bootstrap.sh` gets the identity
 with no extra step, and nothing outside this tree is affected. On a fresh
 machine, that `includeIf` is the only thing to add by hand.
@@ -137,20 +140,14 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 ## Status
 
 The design is closed (`docs/design.md`). What exists so far is configuration
-scaffolding: CLAUDE.md files, the zone matrix, the agents and the skills.
-**Not a single line of Terraform, Packer or Ansible exists yet.**
+scaffolding plus the organization Terraform in `.github`. **No Terraform,
+Packer or Ansible for the homelab itself exists yet.**
 
-All five repos are initialised locally on `main` with an initial commit, but
-**none of them has a remote**: the organization is still empty. Nothing can be
-pushed until the repos exist on GitHub.
+The five repos exist on GitHub, created by `.github/environments/prod`, and
+their history is pushed. The org is mid-bootstrap: the rulesets were created
+**disabled** so `main` could take its first push. Until the second apply
+activates them, `main` accepts direct pushes — do not rely on that.
 
-Two consequences worth remembering:
-
-- The `homelab` plugin is declared in `.claude/settings.json` but its
-  marketplace source repo does not exist yet, so the agents, the skills and
-  the hooks are **not active**. The guardrails are written, not enforced.
-- `bootstrap.sh` cannot clone anything yet either.
-
-Next steps, in order: create the org repos with Terraform from `.github/`,
-push, then generate `infrastructure/firewall.tf` from the matrix in
-`infrastructure/docs/zones.md`.
+Next steps, in order: load the Actions secrets on `.github`, run the second
+apply to activate the rulesets, then generate `infrastructure/firewall.tf` from
+the matrix in `infrastructure/docs/zones.md`.
