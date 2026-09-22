@@ -157,15 +157,13 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 
 ## Status
 
-The design is closed (`docs/design.md`). What exists so far is configuration
-scaffolding plus the organization Terraform in `.github`. **No Terraform,
-Packer or Ansible for the homelab itself exists yet.**
+The design is closed (`docs/design.md`). The org is bootstrapped: the five
+repos exist, created by `.github/environments/prod`, with their rulesets active
+and every change going through a PR linked to an issue.
 
-The five repos exist on GitHub, created by `.github/environments/prod`, and
-their history is pushed. The org is mid-bootstrap: the rulesets were created
-**disabled** so `main` could take its first push. Until the second apply
-activates them, `main` accepts direct pushes — do not rely on that.
+`infrastructure` has its OpenTofu root for the node (`environments/prod`), with
+no resources yet. Phase 1 work is on the project board, in order: SDN zones,
+base template, `vm-access`, admin access tested, firewall, node DROP, `vm-edge`.
 
-Next steps, in order: load the Actions secrets on `.github`, run the second
-apply to activate the rulesets, then generate `infrastructure/firewall.tf` from
-the matrix in `infrastructure/docs/zones.md`.
+Secrets reach CI through SOPS: each repo commits its encrypted
+`secrets/tofu.sops.yaml` and holds one Actions secret, its CI age key.
