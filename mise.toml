@@ -5,3 +5,7 @@ jq   = "1.8.2"   # required by the homelab plugin hooks
 gh   = "2.101.0"
 sops = "3.13.3"
 age  = "1.3.2"
+
+[env]
+# Same path on macOS and Linux. Without it sops looks in a macOS-only location.
+SOPS_AGE_KEY_FILE = "{{env.HOME}}/.config/sops/age/keys.txt"
