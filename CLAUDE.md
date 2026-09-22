@@ -55,6 +55,36 @@ Conventional Commits, in English, in every repo.
 No trailers added by tooling: **never** `Co-Authored-By: Claude`, never a
 generated-by footer. The commit is signed by whoever runs it.
 
+## Branches and pull requests
+
+Branch names mirror the commit types: `<type>/<slug>`.
+
+```
+feat/vault-transit-8200
+fix/edge-bind-address
+chore/bump-opentofu
+docs/zone-matrix-rewrite
+```
+
+The same branch name in every repo the change touches, and only in those.
+
+PRs are **squash merged**, so the PR title becomes the commit on `main`: write
+it as a Conventional Commit subject, same rules as a commit message.
+
+The PR body links the sibling PRs and states the merge order. No trailers
+added by tooling: no generated-by footer, same rule as commits.
+
+## Autonomy
+
+Without asking: create branches, commit, push a branch, open issues, open a
+**draft** PR, and add items to the project board.
+
+Ask first: marking a PR ready for review, merging, creating, renaming or
+deleting a repo, changing organization settings, and anything that applies
+infrastructure. The apply is launched by the human, always.
+
+The rule behind it: work freely while nothing is presented as final.
+
 ## Git identity
 
 Every repo under `~/git/github/0xc0-homelab/` commits as
