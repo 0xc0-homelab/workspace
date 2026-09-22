@@ -66,7 +66,7 @@ Conventional Commits, in English, in every repo.
   `compose`, `agents`, `hooks`. Optional, but use it when it is obvious.
 - Subject: imperative, lowercase, no trailing period, 72 characters or less.
 - `!` after the scope for any change that recreates a resource or breaks a
-  contract (`feat(tofu)!: move vm-edge to its own bridge`). Explain it in the
+  contract (`feat(tofu)!: move vm-edge to its own vnet`). Explain it in the
   body.
 - Body when the why is not obvious from the subject. Wrap at 72.
 
