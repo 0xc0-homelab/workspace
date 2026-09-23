@@ -161,9 +161,11 @@ The design is closed (`docs/design.md`). The org is bootstrapped: the five
 repos exist, created by `.github/environments/prod`, with their rulesets active
 and every change going through a PR linked to an issue.
 
-`infrastructure` has its OpenTofu root for the node (`environments/prod`), with
-no resources yet. Phase 1 work is on the project board, in order: SDN zones,
-base template, `vm-access`, admin access tested, firewall, node DROP, `vm-edge`.
+`infrastructure` runs the node from its OpenTofu root (`environments/prod`):
+the SDN zones, the base template, the two `vm-access` connectors with admin
+access over WARP, the zone firewall and the node on DROP. What is left of
+phase 1, in order: `vm-ci` with the self-hosted runners, the tofu workflows
+moved onto them with RustFS closed, then Packer. `vm-edge` moved to phase 2.
 
 Secrets reach CI through SOPS: each repo commits its encrypted
 `secrets/tofu.sops.yaml` and holds one Actions secret, its CI age key.
