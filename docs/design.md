@@ -25,6 +25,7 @@ Reserved so they never overlap:
 | Zone      | VM          | vCPU | RAM   | IP           | Contents                          |
 |-----------|-------------|------|-------|--------------|-----------------------------------|
 | mgmt      | vm-access   | 1    | 1 GB  | 10.10.0.10   | cloudflared + warp-routing        |
+| mgmt      | vm-access-02 | 1   | 1 GB  | 10.10.0.20   | cloudflared, second connector (HA) |
 | ci        | vm-ci       | 2    | 4 GB  | 10.10.1.10   | Ephemeral runner                  |
 | platform  | vm-vault    | 1    | 2 GB  | 10.10.4.10   | Vault (phase 3)                   |
 | platform  | vm-platform | 4    | 8 GB  | 10.10.4.20   | Prometheus + Grafana              |
