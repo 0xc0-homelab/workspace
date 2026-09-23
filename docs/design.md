@@ -26,7 +26,7 @@ Reserved so they never overlap:
 |-----------|-------------|------|-------|--------------|-----------------------------------|
 | mgmt      | vm-access   | 1    | 1 GB  | 10.10.0.10   | cloudflared + warp-routing        |
 | mgmt      | vm-access-02 | 1   | 1 GB  | 10.10.0.20   | cloudflared, second connector (HA) |
-| ci        | vm-ci       | 2    | 4 GB  | 10.10.1.10   | Ephemeral runner                  |
+| ci        | vm-ci       | 2    | 4 GB  | 10.10.1.10   | Two ephemeral runners             |
 | platform  | vm-vault    | 1    | 2 GB  | 10.10.4.10   | Vault (phase 3)                   |
 | platform  | vm-platform | 4    | 8 GB  | 10.10.4.20   | Prometheus + Grafana              |
 | edge      | vm-edge     | 2    | 4 GB  | 10.10.8.10   | cloudflared + NGINX + open-appsec |
@@ -97,13 +97,16 @@ node 2. Native Proxmox firewall through the same provider.
 
 ## Phases
 
+vm-ci and Packer were pulled into phase 1, and vm-edge moved to phase 2
+(operator decision, 2026-09-23): CI needs the runner inside the network before
+RustFS can close again, and vm-edge has nothing to publish until vm-apps.
+
 1. **Base** — Proxmox, zones, NAT, a base template from the official Debian
-   cloud image (OpenTofu, no Packer), vm-access, vm-edge. SOPS working.
-   Rescue and WARP tested. Everything driven manually from the laptop.
-2. **Core** — vm-apps, vm-data, repos, vm-ci holding the age key, workflows.
-   Packer arrives here, for templates that must be baked: the CI runner, and
-   zones with no egress such as data.
-   Backups to B2 with a timed restore.
+   cloud image (OpenTofu), vm-access, vm-ci with the self-hosted runners, and
+   then Packer, for templates that must be baked: the CI runner, and zones
+   with no egress such as data. SOPS working. Rescue and WARP tested.
+2. **Core** — vm-apps, vm-edge, vm-data, repos, vm-ci holding the age key,
+   workflows. Backups to B2 with a timed restore.
 3. **Platform** — vm-platform with alerts to the phone, vm-vault with OIDC and
    a progressive migration.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
