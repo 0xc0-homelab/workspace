@@ -54,7 +54,7 @@ The normative matrix, in machine-readable form, lives in
 |-----------|---------------------------------|--------------------------------|
 | mgmt      | all + node                      | 22, 3389, 6443, 8006, 8200     |
 | ci        | edge, platform, workloads, data | 22                             |
-| ci        | node                            | 8006 (API, not SSH)            |
+| ci        | node                            | 443, 8006 (API, not SSH)       |
 | ci        | platform                        | 8200                           |
 | edge      | workloads                       | 8080, 30000-32767              |
 | workloads | data                            | 5432, 6379                     |
