@@ -54,7 +54,7 @@ The normative matrix, in machine-readable form, lives in
 |-----------|---------------------------------|--------------------------------|
 | mgmt      | all + node                      | 22, 3389, 6443, 8006, 8200     |
 | ci        | edge, platform, workloads, data | 22                             |
-| ci        | node                            | 8006 (API, not SSH)            |
+| ci        | node                            | 443, 8006 (API, not SSH)       |
 | ci        | platform                        | 8200                           |
 | edge      | workloads                       | 8080, 30000-32767              |
 | workloads | data                            | 5432, 6379                     |
@@ -63,10 +63,13 @@ The normative matrix, in machine-readable form, lives in
 | platform  | internet                        | 443                            |
 | data      | —                               | initiates nothing              |
 
-| internet  | node                            | 443 — Traefik, until the CI runner exists |
+| mgmt, ci  | node                            | 443 — Traefik, over WARP and from the runner |
 
-Node under DROP policy: 22 and 8006 from `10.10.0.0/22`, plus 443 from the
-internet for Traefik (Proxmox UI, PBS, RustFS) until the CI runner exists.
+Node under DROP policy: 22, 443 and 8006 from `10.10.0.0/22` (22 never from
+ci), the scrape ports from platform, and nothing from the internet. Traefik
+(Proxmox UI, PBS, RustFS) closed to the internet once the CI runner existed:
+WARP devices resolve its hostnames to the node's address in mgmt (operator
+decision, 2026-09-23).
 
 The DROP goes on **last** in phase 1, once admin access through `vm-access`
 and WARP is proven. Before that, `10.10.0.0/22` has no hosts in it, and the
@@ -158,9 +161,6 @@ OIDC.
 - Disks in RAID 0 (operator decision, 2026-09-23): one NVMe failure loses the
   whole node. Recovery is a reinstall plus a restore from PBS on the Storage
   Box, which is why that restore has to be tested and timed.
-- The Proxmox UI, PBS and RustFS are reachable from the internet through
-  Traefik on the host. RustFS in particular is open until the CI runner exists
-  (0xc0-homelab/.github#13).
 - Dependency on Cloudflare to get in, with Hetzner Rescue as the way out.
 - Six zones is a fair amount of surface for a single operator.
 - open-appsec is a piece never operated before. Its documentation is sparse and
