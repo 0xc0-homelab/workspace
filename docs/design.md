@@ -96,9 +96,12 @@ node 2. Native Proxmox firewall through the same provider.
 
 ## Phases
 
-1. **Base** — Proxmox, zones, NAT, Packer, vm-access, vm-edge. SOPS working.
+1. **Base** — Proxmox, zones, NAT, a base template from the official Debian
+   cloud image (OpenTofu, no Packer), vm-access, vm-edge. SOPS working.
    Rescue and WARP tested. Everything driven manually from the laptop.
 2. **Core** — vm-apps, vm-data, repos, vm-ci holding the age key, workflows.
+   Packer arrives here, for templates that must be baked: the CI runner, and
+   zones with no egress such as data.
    Backups to B2 with a timed restore.
 3. **Platform** — vm-platform with alerts to the phone, vm-vault with OIDC and
    a progressive migration.
@@ -109,6 +112,15 @@ node 2. Native Proxmox firewall through the same provider.
 
 **Non-negotiable: the tested restore in phase 2.** If the RTO is not measured
 in writing, it is not tested.
+
+## Templates
+
+Phase 1 templates are official cloud images imported by OpenTofu through the
+Proxmox API (operator decision, 2026-09-23): no build VM and no SSH from the
+provider to the node. What a VM needs beyond the image — guest agent,
+hardening, its role — is applied by Ansible after first boot. The first time,
+for `vm-access`, Ansible reaches it by jumping through the host; after that,
+through WARP.
 
 ## Secrets
 
