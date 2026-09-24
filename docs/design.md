@@ -106,10 +106,9 @@ vm-ci and Packer were pulled into phase 1, and vm-edge moved to phase 2
 (operator decision, 2026-09-23): CI needs the runner inside the network before
 RustFS can close again, and vm-edge has nothing to publish until vm-apps.
 
-1. **Base** — Proxmox, zones, NAT, a base template from the official Debian
-   cloud image (OpenTofu), vm-access, vm-ci with the self-hosted runners, and
-   then Packer, for templates that must be baked: the CI runner, and zones
-   with no egress such as data. SOPS working. Rescue and WARP tested.
+1. **Base** — Proxmox, zones, NAT, the templates baked with Packer from the
+   official Debian cloud image, vm-access, vm-ci with the self-hosted runners.
+   SOPS working. Rescue and WARP tested.
 2. **Core** — vm-apps, vm-edge, vm-data, repos, vm-ci holding the age key,
    workflows. Backups to B2 with a timed restore.
 3. **Platform** — vm-platform with alerts to the phone, vm-vault with OIDC and
@@ -124,12 +123,17 @@ in writing, it is not tested.
 
 ## Templates
 
-Phase 1 templates are official cloud images imported by OpenTofu through the
-Proxmox API (operator decision, 2026-09-23): no build VM and no SSH from the
-provider to the node. What a VM needs beyond the image — guest agent,
-hardening, its role — is applied by Ansible after first boot. The first time,
-for `vm-access`, Ansible reaches it by jumping through the host; after that,
-through WARP.
+Every VM clones a template baked by Packer (operator decision, 2026-09-24).
+The chain starts from the official Debian cloud image, which OpenTofu imports
+through the Proxmox API as a raw template, `debian-13-cloud`, that no VM clones.
+Packer bakes `debian-13-base` from it with the `base` role (guest agent, SSH
+hardening), and `debian-13-runner` from `debian-13-base`. What is per VM or
+secret, the VM's role included, stays with cloud-init and Ansible.
+
+Templates carry no version and no fixed VMID: Proxmox assigns it, and
+everything finds a template by name. A rebuild deletes it and builds it again;
+VMs are full clones and ignore later changes to their template, so moving one
+onto a rebuilt template is a deliberate `rebuild`.
 
 ## Secrets
 
