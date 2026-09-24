@@ -99,7 +99,7 @@ No other zone initiates towards mgmt.
   Kubernetes API, SSH, Vault, Proxmox, PBS and RustFS are reached **only** this
   way, never through the public tunnel.
 - **Deploy**: infrastructure through the runner on vm-ci (Proxmox API, SSH);
-  what runs in the cluster through ArgoCD, from `deployments/clusters/prod/`.
+  what runs in the cluster through ArgoCD, from `gitops/clusters/prod/`.
 - **Egress**: VM → `.1` of its zone → NAT behind the public IP.
 
 ## Stack
@@ -191,7 +191,7 @@ OIDC.
 | Loki, Tempo now     | Prometheus + Grafana only, for now                   |
 | Two K8s clusters    | same hardware, adds no isolation; one cluster, separated by namespace (operator decision, 2026-09-24) |
 | A VM per role after phase 1 (vm-edge, vm-apps, vm-data, vm-vault, vm-platform) | replaced by the cluster (operator decision, 2026-09-24) |
-| Docker Compose on VMs | replaced by the cluster; `deployments` holds ArgoCD manifests |
+| Docker Compose on VMs | replaced by the cluster; `gitops` holds ArgoCD manifests |
 | Bug bounty lab      | reserved range, out of scope                         |
 | Flux                | operator decision (2026-09-22): GitOps is ArgoCD     |
 
@@ -216,4 +216,4 @@ OIDC.
 
 `infrastructure` and `.github`: `main` only, PR required, apply behind manual
 approval. `app-*`: test→prod promotion of the same digest.
-ArgoCD points at `deployments/clusters/prod/`.
+ArgoCD points at `gitops/clusters/prod/`.

@@ -21,10 +21,10 @@ something requires it, say so and stop. Each phase is detailed in
 | `.github/`       | `.github`         | org Terraform + reusable workflows              |
 | `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks, skills) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
-| `deployments/`   | `deployments`     | clusters/prod/: ArgoCD manifests (phase 2)        |
+| `gitops/`        | `gitops`          | clusters/prod/: ArgoCD manifests (phase 2)        |
 | `app-*/`         | various           | applications                                    |
 
-Dependency order: `.github` → `infrastructure` → `deployments` → `app-*`.
+Dependency order: `.github` → `infrastructure` → `gitops` → `app-*`.
 A downstream change is not merged until the upstream one is applied.
 
 ## Changes that cross repos

@@ -5,7 +5,7 @@
 # path GitHub reads for workflows, CODEOWNERS and community health files.
 /.github/
 /claude-config/
-/deployments/
+/gitops/
 /infrastructure/
 /app-*/
 
