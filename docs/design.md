@@ -47,8 +47,10 @@ Besides Proxmox, the host runs the base services, **outside IaC**:
 
 ## Transit
 
-The normative matrix, in machine-readable form, lives in
-`infrastructure/docs/zones.md`. `firewall.tf` is generated from it.
+The matrix that decides is the `transit` variable in
+`infrastructure/environments/prod/terraform.tfvars`: the `zone-firewall` module
+computes every rule from it. `infrastructure/docs/zones.md` explains it. This
+table summarises it.
 
 | From      | To                              | Ports                          |
 |-----------|---------------------------------|--------------------------------|
