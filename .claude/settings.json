@@ -1,13 +1,5 @@
 {
   "$schema": "https://code.claude.com/schemas/settings.json",
-  "extraKnownMarketplaces": {
-    "0xc0-homelab": {
-      "source": { "source": "github", "repo": "0xc0-homelab/claude-config" }
-    }
-  },
-  "enabledPlugins": {
-    "homelab@0xc0-homelab": true
-  },
   "permissions": {
     "allow": [
       "Bash(tofu plan:*)",
@@ -40,5 +32,16 @@
       "Read(./**/id_ed25519)",
       "Read(./**/id_rsa)"
     ]
+  },
+  "enabledPlugins": {
+    "homelab@0xc0-homelab": true
+  },
+  "extraKnownMarketplaces": {
+    "0xc0-homelab": {
+      "source": {
+        "source": "github",
+        "repo": "0xc0-homelab/claude-config"
+      }
+    }
   }
 }

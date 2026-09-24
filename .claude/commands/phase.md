@@ -16,7 +16,7 @@ Declared right now:
 Phases: 1 Base · 2 Core · 3 Platform · 4 Resilience · 5 HA · 6 Kubernetes.
 Each one is defined in `docs/design.md`.
 
-**With no argument**: report whether the three agree. If they diverge, say so
+**With no argument**: report whether the four agree. If they diverge, say so
 plainly and name the odd one out — that is a bug, not a detail.
 
 **With a phase number in `$1`**: this is a deliberate project milestone, not a
@@ -34,5 +34,5 @@ never one that crosses repos:
 chore: advance to phase $1
 ```
 
-Then report the three files and stop. Do not start implementing anything from
+Then report the four files and stop. Do not start implementing anything from
 the new phase in the same pass.
