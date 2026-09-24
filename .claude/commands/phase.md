@@ -11,7 +11,7 @@ four must never disagree.
 
 Declared right now:
 
-!`for f in CLAUDE.md infrastructure/CLAUDE.md deployments/CLAUDE.md; do if [ -f "$f" ]; then printf "%-28s %s\n" "$f" "$(grep -m1 '^## CURRENT PHASE' "$f" || echo 'NOT DECLARED')"; else printf "%-28s %s\n" "$f" "missing"; fi; done; printf "%-28s %s\n" ".github/profile/README.md" "$(grep -m1 '^\*\*Current phase:' .github/profile/README.md 2>/dev/null || echo 'NOT DECLARED')"`
+!`for f in CLAUDE.md infrastructure/CLAUDE.md gitops/CLAUDE.md; do if [ -f "$f" ]; then printf "%-28s %s\n" "$f" "$(grep -m1 '^## CURRENT PHASE' "$f" || echo 'NOT DECLARED')"; else printf "%-28s %s\n" "$f" "missing"; fi; done; printf "%-28s %s\n" ".github/profile/README.md" "$(grep -m1 '^\*\*Current phase:' .github/profile/README.md 2>/dev/null || echo 'NOT DECLARED')"`
 
 Phases: 1 Base · 2 Core · 3 Platform · 4 Resilience · 5 HA · 6 Kubernetes.
 Each one is defined in `docs/design.md`.

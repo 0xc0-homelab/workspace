@@ -21,10 +21,10 @@ something requires it, say so and stop. Each phase is detailed in
 | `.github/`       | `.github`         | org Terraform + reusable workflows              |
 | `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks, skills) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
-| `deployments/`   | `deployments`     | compose/ per VM, clusters/prod/ (ArgoCD, phase 6) |
+| `gitops/`        | `gitops`          | clusters/prod/: ArgoCD manifests (phase 2)        |
 | `app-*/`         | various           | applications                                    |
 
-Dependency order: `.github` → `infrastructure` → `deployments` → `app-*`.
+Dependency order: `.github` → `infrastructure` → `gitops` → `app-*`.
 A downstream change is not merged until the upstream one is applied.
 
 ## Changes that cross repos
@@ -175,9 +175,12 @@ Phase 1 is complete: `infrastructure` runs the node from its OpenTofu root
 - the zone firewall, and the node's firewall on DROP.
 
 Nothing is exposed to the internet: Traefik on the node is reached over WARP.
-Every VM carries `prevent_destroy`. `vm-edge` belongs to phase 2, with
-`vm-apps`: it has nothing to publish before them. Credential rotation comes
-with Vault, in phase 3.
+Every VM carries `prevent_destroy`.
+
+Phase 2 builds one RKE2 cluster on Rocky Linux in `platform`, behind an HAProxy
+load balancer that also carries the public tunnel; everything after phase 1
+runs in it (`docs/design.md`). Credential rotation comes with Vault, in
+phase 3.
 
 Secrets reach CI through SOPS: each repo commits its encrypted
 `secrets/tofu.sops.yaml` and holds one Actions secret, its CI age key.

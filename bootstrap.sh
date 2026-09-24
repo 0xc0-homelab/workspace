@@ -18,4 +18,4 @@ clone() {  # $1 = repo name, $2 = local directory
 clone .github        .github
 clone claude-config  claude-config
 clone infrastructure infrastructure
-clone deployments    deployments
+clone gitops         gitops
