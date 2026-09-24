@@ -6,9 +6,9 @@ repo with its own remote. **Never make a commit that crosses repos.**
 
 Always start `claude` from here for work touching more than one repo.
 
-## CURRENT PHASE: 1 (Base)
+## CURRENT PHASE: 2 (Cluster)
 
-1 Base · 2 Core · 3 Platform · 4 Resilience · 5 HA · 6 Kubernetes
+1 Base · 2 Cluster · 3 Platform · 4 Resilience · 5 HA · 6 Applications
 
 Do not implement anything from later phases even if it fits technically. If
 something requires it, say so and stop. Each phase is detailed in
