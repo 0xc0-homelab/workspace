@@ -19,7 +19,7 @@ something requires it, say so and stop. Each phase is detailed in
 | Directory        | Repo              | Contents                                        |
 |------------------|-------------------|-------------------------------------------------|
 | `.github/`       | `.github`         | org Terraform + reusable workflows              |
-| `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks) |
+| `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks, skills) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
 | `deployments/`   | `deployments`     | compose/ per VM, clusters/prod/ (ArgoCD, phase 6) |
 | `app-*/`         | various           | applications                                    |
@@ -150,8 +150,9 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
   `homelab/<repo>/<environment>.tfstate` in RustFS, never a shared one. Full
   conventions in `.github/README.md`.
 - Secrets with SOPS+age. An unencrypted file holding sensitive material is a bug.
-- Before proposing any IP or subnet, check it against
-  `infrastructure/docs/zones.md`. There are reserved ranges that are off limits.
+- Before proposing any IP or subnet, check it against `zones` and `vms` in
+  `infrastructure/environments/prod/terraform.tfvars` and the reserved ranges
+  in `infrastructure/docs/zones.md`, which are off limits.
 - What is discarded stays discarded. The list and the reasons are in
   `docs/design.md`. Do not reopen it unless the human explicitly asks.
 
@@ -161,11 +162,22 @@ The design is closed (`docs/design.md`). The org is bootstrapped: the five
 repos exist, created by `.github/environments/prod`, with their rulesets active
 and every change going through a PR linked to an issue.
 
-`infrastructure` runs the node from its OpenTofu root (`environments/prod`):
-the SDN zones, the base template, the two `vm-access` connectors with admin
-access over WARP, the zone firewall and the node on DROP. What is left of
-phase 1, in order: `vm-ci` with the self-hosted runners, the tofu workflows
-moved onto them with RustFS closed, then Packer. `vm-edge` moved to phase 2.
+Phase 1 is complete: `infrastructure` runs the node from its OpenTofu root
+(`environments/prod`):
+
+- the SDN zones;
+- the templates every VM clones, `debian-13-base` and `debian-13-runner`,
+  baked by Packer from the raw `debian-13-cloud` that OpenTofu imports;
+- `vm-access-01` and `vm-access-02`, identical cloudflared connectors over
+  QUIC, with admin access over WARP;
+- `vm-ci` with two ephemeral GitHub Actions runners, so CI runs inside the
+  network and RustFS stays closed;
+- the zone firewall, and the node's firewall on DROP.
+
+Nothing is exposed to the internet: Traefik on the node is reached over WARP.
+Every VM carries `prevent_destroy`. `vm-edge` belongs to phase 2, with
+`vm-apps`: it has nothing to publish before them. Credential rotation comes
+with Vault, in phase 3.
 
 Secrets reach CI through SOPS: each repo commits its encrypted
 `secrets/tofu.sops.yaml` and holds one Actions secret, its CI age key.

@@ -1,8 +1,8 @@
 # Tooling for the workspace umbrella repo.
 # Nothing is installed system-wide: see CLAUDE.md, section "Tooling".
 [tools]
-jq   = "1.8.2"   # required by the homelab plugin hooks
-gh   = "2.101.0"
+jq   = "1.8.2"   # the homelab plugin hooks (they also need perl, from the OS)
+gh   = "2.101.0" # the plugin board loader (board.sh), bootstrap.sh, the commands
 sops = "3.13.3"
 age  = "1.3.2"
 

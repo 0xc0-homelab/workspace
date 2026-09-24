@@ -22,17 +22,17 @@ Reserved so they never overlap:
 
 ## Machines
 
-| Zone      | VM          | vCPU | RAM   | IP           | Contents                          |
-|-----------|-------------|------|-------|--------------|-----------------------------------|
-| mgmt      | vm-access   | 1    | 1 GB  | 10.10.0.10   | cloudflared + warp-routing        |
-| mgmt      | vm-access-02 | 1   | 1 GB  | 10.10.0.20   | cloudflared, second connector (HA) |
-| ci        | vm-ci       | 2    | 4 GB  | 10.10.1.10   | Two ephemeral runners             |
-| platform  | vm-vault    | 1    | 2 GB  | 10.10.4.10   | Vault (phase 3)                   |
-| platform  | vm-platform | 4    | 8 GB  | 10.10.4.20   | Prometheus + Grafana              |
-| edge      | vm-edge     | 2    | 4 GB  | 10.10.8.10   | cloudflared + NGINX + open-appsec |
-| workloads | vm-apps     | 4    | 12 GB | 10.10.16.10  | Containers                        |
-| workloads | vm-rke2     | 4    | 12 GB | 10.10.16.20  | RKE2 (phase 6)                    |
-| data      | vm-data     | 2    | 8 GB  | 10.10.32.10  | Postgres, Redis                   |
+| Zone      | VM           | vCPU | RAM   | IP           | Contents                          |
+|-----------|--------------|------|-------|--------------|-----------------------------------|
+| mgmt      | vm-access-01 | 1    | 1 GB  | 10.10.0.10   | cloudflared connector (QUIC)      |
+| mgmt      | vm-access-02 | 1    | 1 GB  | 10.10.0.20   | cloudflared connector (QUIC)      |
+| ci        | vm-ci        | 2    | 4 GB  | 10.10.1.10   | Two ephemeral runners             |
+| platform  | vm-vault     | 1    | 2 GB  | 10.10.4.10   | Vault (phase 3)                   |
+| platform  | vm-platform  | 4    | 8 GB  | 10.10.4.20   | Prometheus + Grafana              |
+| edge      | vm-edge      | 2    | 4 GB  | 10.10.8.10   | cloudflared + NGINX + open-appsec |
+| workloads | vm-apps      | 4    | 12 GB | 10.10.16.10  | Containers                        |
+| workloads | vm-rke2      | 4    | 12 GB | 10.10.16.20  | RKE2 (phase 6)                    |
+| data      | vm-data      | 2    | 8 GB  | 10.10.32.10  | Postgres, Redis                   |
 
 The host (`pve-1`, `pve.0xc0.cc`) holds `.1` in every zone and is the router
 and the firewall. `eno1` keeps the public IP. Each zone is an SDN VNet with no
@@ -52,37 +52,36 @@ The matrix that decides is the `transit` variable in
 computes every rule from it. `infrastructure/docs/zones.md` explains it. This
 table summarises it.
 
-| From      | To                              | Ports                          |
-|-----------|---------------------------------|--------------------------------|
-| mgmt      | all + node                      | 22, 3389, 6443, 8006, 8200     |
-| ci        | edge, platform, workloads, data | 22                             |
-| ci        | node                            | 443, 8006 (API, not SSH)       |
-| ci        | platform                        | 8200                           |
-| edge      | workloads                       | 8080, 30000-32767              |
-| workloads | data                            | 5432, 6379                     |
-| workloads | platform                        | 8200                           |
-| platform  | workloads, data, node           | 9100, 10250                    |
-| platform  | internet                        | 443                            |
-| data      | —                               | initiates nothing              |
+| From      | To                                  | Ports                                |
+|-----------|-------------------------------------|--------------------------------------|
+| mgmt      | ci, platform, edge, workloads, data | 22, 3389, 6443, 8006, 8200           |
+| mgmt      | node                                | 22, 443, 3389, 6443, 8006, 8200      |
+| mgmt      | mgmt                                | 22, between the vm-access connectors |
+| ci        | edge, platform, workloads, data     | 22                                   |
+| ci        | node                                | 443, 8006 (API, not SSH)             |
+| ci        | platform                            | 8200                                 |
+| edge      | workloads                           | 8080, 30000-32767                    |
+| workloads | data                                | 5432, 6379                           |
+| workloads | platform                            | 8200                                 |
+| platform  | workloads, data, node               | 9100, 10250                          |
+| platform  | internet                            | 443                                  |
+| data      | —                                   | initiates nothing                    |
 
-| mgmt, ci  | node                            | 443 — Traefik, over WARP and from the runner |
+The node is on a DROP policy. From the admin zones it admits only 22, 443 and
+8006 of what the matrix opens: all three from mgmt, 443 and 8006 from ci. It
+admits the scrape ports from platform, and nothing from the internet. Traefik
+(Proxmox UI, PBS, RustFS) is not exposed to the internet: WARP devices resolve
+its hostnames to the node's address in mgmt, and the runner reaches it from ci
+(operator decision, 2026-09-23). The Hetzner Rescue system is the way back if
+WARP breaks.
 
-Node under DROP policy: 22, 443 and 8006 from `10.10.0.0/22` (22 never from
-ci), the scrape ports from platform, and nothing from the internet. Traefik
-(Proxmox UI, PBS, RustFS) closed to the internet once the CI runner existed:
-WARP devices resolve its hostnames to the node's address in mgmt (operator
-decision, 2026-09-23).
-
-The DROP goes on **last** in phase 1, once admin access through `vm-access`
-and WARP is proven. Before that, `10.10.0.0/22` has no hosts in it, and the
-DROP would lock the operator out of the node.
-Nobody initiates towards mgmt.
+No other zone initiates towards mgmt.
 
 ## Flows
 
 - **Web**: Cloudflare → tunnel → vm-edge → open-appsec → NGINX by
   `server_name` → vm-apps or the cluster ingress.
-- **Admin**: Access + WARP → vm-access → straight into any zone, no hop.
+- **Admin**: Access + WARP → either vm-access connector → straight into any zone, no hop.
   Private dashboards go through this tunnel, **never** through the edge.
 - **Deploy**: merge → runner on vm-ci (pull) → SSH or Proxmox API.
 - **Egress**: VM → `.1` of its zone → NAT behind the public IP.
@@ -102,15 +101,16 @@ node 2. Native Proxmox firewall through the same provider.
 
 ## Phases
 
-vm-ci and Packer were pulled into phase 1, and vm-edge moved to phase 2
-(operator decision, 2026-09-23): CI needs the runner inside the network before
-RustFS can close again, and vm-edge has nothing to publish until vm-apps.
+vm-ci and Packer belong to phase 1 and vm-edge to phase 2 (operator decision,
+2026-09-23): CI needs a runner inside the network so RustFS stays closed, and
+vm-edge has nothing to publish before vm-apps.
 
 1. **Base** — Proxmox, zones, NAT, the templates baked with Packer from the
-   official Debian cloud image, vm-access, vm-ci with the self-hosted runners.
-   SOPS working. Rescue and WARP tested.
-2. **Core** — vm-apps, vm-edge, vm-data, repos, vm-ci holding the age key,
-   workflows. Backups to B2 with a timed restore.
+   official Debian cloud image, the vm-access pair, vm-ci with the self-hosted
+   runners, the zone firewall and the node firewall on DROP. SOPS working.
+   Rescue and WARP tested.
+2. **Core** — vm-apps, vm-edge, vm-data, vm-ci holding the age key. Backups to
+   B2 with a timed restore.
 3. **Platform** — vm-platform with alerts to the phone, vm-vault with OIDC and
    a progressive migration.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
