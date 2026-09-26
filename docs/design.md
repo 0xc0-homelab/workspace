@@ -74,6 +74,7 @@ table is the target once the cluster exists:
 | mgmt     | mgmt     | 22, between the vm-access connectors                    |
 | ci       | platform | 22, 6443                                                |
 | ci       | node     | 443, 8006 (API, not SSH)                                |
+| internet | node     | 22, break-glass; closed at the Hetzner firewall         |
 | platform | platform | the cluster's own traffic, and VRRP between the LBs     |
 | platform | node     | 9100 (node metrics)                                     |
 
@@ -81,10 +82,12 @@ Inside `platform`, the cluster needs more than TCP (VXLAN for the pod network,
 VRRP for keepalived), so the matrix gains a protocol per entry.
 
 The node is on a DROP policy: 22, 443 and 8006 from the admin zones, 22 never
-from ci, the metrics port from platform, and nothing from the internet. Traefik
-(Proxmox UI, PBS, RustFS) is reached over WARP, where Gateway resolves its
-hostnames to the node's address in mgmt. The Hetzner Rescue system is the way
-back if WARP breaks.
+from ci, the metrics port from platform, and from the internet only SSH, as
+break-glass (operator decision, 2026-09-26): the Hetzner firewall keeps it
+closed until the operator opens it, and sshd is key-only. Traefik (Proxmox UI,
+PBS, RustFS) is reached over WARP, where Gateway resolves its hostnames to the
+node's address in mgmt. If WARP breaks, the way back is that SSH, then the
+Hetzner Rescue system.
 
 No other zone initiates towards mgmt.
 
