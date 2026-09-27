@@ -29,18 +29,26 @@ Reserved so they never overlap:
 | mgmt     | vm-access-01 | Debian | cloudflared connector of the admin tunnel (QUIC)  |
 | mgmt     | vm-access-02 | Debian | cloudflared connector of the admin tunnel (QUIC)  |
 | ci       | vm-ci        | Debian | two ephemeral GitHub Actions runners              |
-| platform | two LB VMs   | Debian | HAProxy + keepalived VIP; public tunnel connectors |
-| platform | RKE2 nodes   | Rocky  | the cluster                                       |
+| platform | vm-lb-01     | Debian | HAProxy + keepalived; public tunnel connector     |
+| platform | vm-lb-02     | Debian | HAProxy + keepalived; public tunnel connector     |
+| platform | vm-rke2-01   | Rocky  | RKE2 server                                       |
+| platform | vm-rke2-02   | Rocky  | RKE2 server                                       |
+| platform | vm-rke2-03   | Rocky  | RKE2 server                                       |
 
-Names, sizes and addresses of the platform VMs are fixed when they are built,
-against `infrastructure/docs/zones.md`.
+Sizes and addresses are in `infrastructure/docs/zones.md`.
+
+**The three RKE2 nodes are identical, and all three are servers** (operator
+decision, 2026-09-27): each runs the control plane and etcd, and takes
+workloads. In Kubernetes the role is configuration, not a different machine;
+three servers keep etcd's quorum through the loss of one VM.
 
 **Outside the cluster, deliberately:** the vm-access pair is the admin way in,
 and vm-ci builds and changes the infrastructure, the cluster included. Neither
 may depend on what it has to fix.
 
-**The RKE2 nodes run Rocky Linux**, the latest release RKE2 supports (operator
-decision, 2026-09-24). They clone their own template chain, from the official
+**The RKE2 nodes run Rocky Linux 10**, the latest release RKE2 supports
+(RHEL 10 and its derivatives, with the package that allows `nf_conntrack`;
+operator decision, 2026-09-24). They clone their own template chain, from the official
 Rocky cloud image, as the Debian VMs do from theirs.
 
 **The load balancer is deployed with the cluster**: the same OpenTofu module
@@ -114,6 +122,13 @@ self-hosted runners · RKE2 on Rocky Linux · HAProxy + keepalived · ArgoCD ·
 an ingress with open-appsec · Vault · Prometheus + Grafana · Hetzner Rescue as
 the emergency path.
 
+**ArgoCD is installed by OpenTofu, and everything else in the cluster by
+ArgoCD** (operator decision, 2026-09-27). A separate root,
+`infrastructure/environments/cluster/`, installs ArgoCD once Ansible has
+brought RKE2 up: it needs the cluster's API, which the root that creates the
+VMs cannot have yet. From there ArgoCD deploys every other component (the
+ingress, open-appsec, Vault, monitoring, applications) from the `gitops` repo.
+
 **Vault runs in the cluster** (operator decision, 2026-09-24). The cluster
 boots with secrets from SOPS only, so it never needs Vault to start; ArgoCD
 then deploys Vault, and applications take their secrets from it. Vault is
@@ -143,7 +158,7 @@ RustFS stays closed. The cluster comes in phase 2 (operator decision,
    the phone; data services (Postgres, Redis) in the cluster.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
 5. **HA** — node 2, QDevice, storage replication, SDN zones across both nodes,
-   the control plane spread over three servers. Node 1 has no ZFS (mdadm RAID
+   the three RKE2 servers spread over the two nodes. Node 1 has no ZFS (mdadm RAID
    0), so the replication model is redesigned here.
 6. **Applications** — the `app-*` repos, with test→prod promotion of the same
    digest.
