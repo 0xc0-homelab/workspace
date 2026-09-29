@@ -113,9 +113,10 @@ playbook (operator decision, 2026-09-29).
   (layer 4) → NodePort → Traefik, with CrowdSec's bouncer → service. The
   client's address reaches Traefik as `CF-Connecting-IP`, trusted only from
   `platform`.
-- **Portals** (Grafana, ArgoCD): the same path, behind Cloudflare Access. The
-  ArgoCD policy also requires the device to be on WARP: it can change the whole
-  cluster.
+- **Portals** (Grafana, ArgoCD): internal, reached only over WARP, through
+  the admin tunnel to Traefik on the VIP's port 80, where Gateway resolves
+  their hostnames. None is published through the public tunnel (operator
+  decision, 2026-09-29): publishing one behind Cloudflare Access is deferred.
 - **Admin**: WARP → admin tunnel → either vm-access connector → any zone. The
   Kubernetes API, SSH, Vault, Proxmox, PBS and RustFS are reached **only** this
   way, never through the public tunnel.
