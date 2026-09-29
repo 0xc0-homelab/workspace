@@ -110,13 +110,26 @@ playbook (operator decision, 2026-09-29).
 ## Flows
 
 - **Web**: Cloudflare → public tunnel → cloudflared on the LB VMs → HAProxy
-  (layer 4) → NodePort → Traefik, with CrowdSec's bouncer → service. The
-  client's address reaches Traefik as `CF-Connecting-IP`, trusted only from
-  `platform`.
+  (layer 4) on 443 → NodePort → Traefik, with CrowdSec's bouncer → service.
+  cloudflared talks HTTPS to Traefik and checks its certificate, with the
+  request's host as SNI. The client's address reaches Traefik as
+  `CF-Connecting-IP`, trusted only from `platform`.
+- **TLS** (operator decision, 2026-09-29): it ends at Traefik, on both paths,
+  with a Let's Encrypt wildcard per domain (`*.d` and `d`) from cert-manager,
+  through DNS-01 challenges in Cloudflare. Port 80 only redirects to HTTPS.
+  Domains: `0xc0.cc` and `offby1.cc`; `sergioaten.cloud` once the Cloudflare
+  token reaches its zone.
+- **Public names**: the tunnel serves every name of the domains in
+  `public_domains`, but a name is public only once external-dns gives it a
+  record (a proxied CNAME to the tunnel), which it does only for an HTTPRoute
+  annotated `gateway.0xc0.cc/public: "true"`. Only zones in the tunnel's own
+  Cloudflare account can be public: a CNAME to it from another account's zone
+  (`offby1.cc`) fails at the edge (1014). external-dns comes ahead of phase 6
+  on purpose (operator decision, 2026-09-29).
 - **Portals** (Grafana, ArgoCD): internal, reached only over WARP, through
-  the admin tunnel to Traefik on the VIP's port 80, where Gateway resolves
-  their hostnames. None is published through the public tunnel (operator
-  decision, 2026-09-29): publishing one behind Cloudflare Access is deferred.
+  the admin tunnel to Traefik on the VIP, where Gateway resolves their
+  hostnames. None has a public record (operator decision, 2026-09-29):
+  publishing one behind Cloudflare Access is deferred.
 - **Admin**: WARP → admin tunnel → either vm-access connector → any zone. The
   Kubernetes API, SSH, Vault, Proxmox, PBS and RustFS are reached **only** this
   way, never through the public tunnel.
@@ -191,7 +204,8 @@ RustFS stays closed. The cluster comes in phase 2 (operator decision,
    Rescue and WARP tested.
 2. **Cluster** — the Rocky template chain, the RKE2 cluster, the HAProxy LB
    with the public tunnel, ArgoCD, Longhorn, the ingress (Traefik) with its WAF
-   (CrowdSec). Backups through PBS with a timed restore.
+   (CrowdSec), cert-manager with Let's Encrypt, external-dns. Backups through
+   PBS with a timed restore.
 3. **Platform** — Vault in the cluster with OIDC and a progressive migration
    off SOPS, credential rotation with it; Prometheus + Grafana with alerts to
    the phone; data services (Postgres, Redis) in the cluster.
@@ -276,6 +290,14 @@ OIDC.
   application's normal traffic.
 - Longhorn's pods may egress anywhere: restricting it risks breaking storage
   silently, for little gain (operator decision, 2026-09-29, gitops#10).
+- cert-manager and external-dns use OpenTofu's Cloudflare token, which can
+  also change the tunnels, Zero Trust and Access: whoever reads its Secret in
+  the cluster gets all of that (operator decision, 2026-09-29). They get a
+  DNS-only token with Vault (.github#6).
+- Public and internal names reach the same Traefik through the same HAProxy:
+  what keeps a portal internal is that it has no public record. A portal
+  should also refuse requests carrying `CF-Connecting-IP`, which only the
+  public tunnel sets.
 
 ## Repos and policies
 
