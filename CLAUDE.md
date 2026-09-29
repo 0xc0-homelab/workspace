@@ -179,7 +179,8 @@ Phase 1 is complete: `infrastructure` runs the node from its OpenTofu root
   network and RustFS stays closed;
 - the zone firewall, and the node's firewall on DROP.
 
-Nothing is exposed to the internet: Traefik on the node is reached over WARP.
+Nothing is exposed to the internet: Traefik on the node (the host's reverse
+proxy, not the cluster's ingress) is reached over WARP.
 Every VM carries `prevent_destroy`.
 
 Phase 2 builds one RKE2 cluster on Rocky Linux in `platform`, behind an HAProxy

@@ -109,8 +109,10 @@ playbook (operator decision, 2026-09-29).
 
 ## Flows
 
-- **Web**: Cloudflare → public tunnel → cloudflared on the LB VMs → HAProxy →
-  NodePort → ingress with open-appsec → service.
+- **Web**: Cloudflare → public tunnel → cloudflared on the LB VMs → HAProxy
+  (layer 4) → NodePort → Traefik, with CrowdSec's bouncer → service. The
+  client's address reaches Traefik as `CF-Connecting-IP`, trusted only from
+  `platform`.
 - **Portals** (Grafana, ArgoCD): the same path, behind Cloudflare Access. The
   ArgoCD policy also requires the device to be on WARP: it can change the whole
   cluster.
@@ -130,8 +132,8 @@ Proxmox VE 9 on a Hetzner dedicated server, 2× NVMe in mdadm RAID 0 ·
 PBS to a Hetzner Storage Box · RustFS for the OpenTofu state · Cloudflare Free
 (Tunnel, Access, WARP) · Packer + OpenTofu + Ansible · GitHub Actions with
 self-hosted runners · RKE2 on Rocky Linux · HAProxy + keepalived · ArgoCD ·
-an ingress with open-appsec · Vault · Prometheus + Grafana · Hetzner Rescue as
-the emergency path.
+Traefik with the Gateway API · CrowdSec · Longhorn · Vault · Prometheus +
+Grafana · Hetzner Rescue as the emergency path.
 
 **ArgoCD is installed with the cluster, and everything else in the cluster by
 ArgoCD** (operator decision, 2026-09-29, replacing the OpenTofu root of
@@ -141,7 +143,7 @@ RKE2's own helm-controller installs it. An OpenTofu root would have needed
 Ansible to have run first, and the admin kubeconfig outside the servers;
 this needs neither. RKE2's helm-controller keeps managing ArgoCD itself, so
 two controllers never fight over it. From there ArgoCD deploys every other
-component (the ingress, open-appsec, Vault, monitoring, applications) from
+component (Longhorn, Traefik, CrowdSec, Vault, monitoring, applications) from
 the `gitops` repo, which is public: no repo credentials. A private repo would
 get a read-only GitHub App, its key bootstrapped from SOPS the same way.
 
@@ -151,8 +153,25 @@ token and ArgoCD's admin password go from SOPS, through Ansible, into files
 only root reads on the servers. ArgoCD then deploys Vault, and applications
 take their secrets from it through External Secrets Operator. No secret lives
 in `gitops`, not even encrypted, so ArgoCD never holds the age key. Vault is
-unsealed by hand after a restart. Which ingress controller carries open-appsec
-is chosen against open-appsec's documentation when it is built.
+unsealed by hand after a restart.
+
+**The ingress is Traefik, with the Gateway API, and the WAF is CrowdSec**
+(operator decision, 2026-09-29). open-appsec was the plan, and it is deferred:
+every Kubernetes integration it has runs on something retired or unmaintained
+(ingress-nginx, retired in March 2026; Kong, with no free images since 3.10;
+Istio 1.23-1.26 and Envoy 1.32-1.34, all end of life; APISIX on unmaintained
+etcd images). Cloudflare Free covers DDoS and the most exploited CVEs; what it
+leaves, application attacks on public apps without Access, is CrowdSec's:
+Traefik's bouncer checks every request against CrowdSec's AppSec component
+(virtual-patching rules, no CRS to tune) and its community blocklist, shared in
+return for the attacking IPs, never request contents. The load balancers stay
+layer 4, with no WAF of their own. open-appsec is reconsidered when public
+applications arrive, in phase 6.
+
+**Longhorn is the cluster's storage** (operator decision, 2026-09-29): the
+default `StorageClass`, three replicas, one per node, on each RKE2 server's two
+data disks. It has no backup target of its own: **PBS backs the VMs up whole**,
+data disks included, and that is what the timed restore tests.
 
 Zones are Proxmox SDN: one Simple zone, a VNet and a subnet per zone, the host
 as `.1` and SNAT for egress, all in OpenTofu through `bpg/proxmox`. Zones
@@ -170,8 +189,8 @@ RustFS stays closed. The cluster comes in phase 2 (operator decision,
    runners, the zone firewall and the node firewall on DROP. SOPS working.
    Rescue and WARP tested.
 2. **Cluster** — the Rocky template chain, the RKE2 cluster, the HAProxy LB
-   with the public tunnel, ArgoCD, the ingress with open-appsec. Backups to B2
-   with a timed restore.
+   with the public tunnel, ArgoCD, Longhorn, the ingress (Traefik) with its WAF
+   (CrowdSec). Backups through PBS with a timed restore.
 3. **Platform** — Vault in the cluster with OIDC and a progressive migration
    off SOPS, credential rotation with it; Prometheus + Grafana with alerts to
    the phone; data services (Postgres, Redis) in the cluster.
@@ -220,8 +239,9 @@ OIDC.
 | Discarded           | Reason                                               |
 |---------------------|------------------------------------------------------|
 | WireGuard           | Cloudflare Access + WARP already covers admin access |
-| Traefik as ingress  | it runs on the host only as the reverse proxy for Proxmox, PBS and RustFS, outside IaC |
-| Coraza              | open-appsec avoids hand-tuning the CRS               |
+| Coraza              | the OWASP CRS needs hand-tuning; CrowdSec's virtual patching does not |
+| open-appsec, for now | every Kubernetes integration runs on retired or unmaintained pieces; reconsidered in phase 6 (operator decision, 2026-09-29) |
+| kube-vip, MetalLB    | the load balancer VMs keep the VIP for WARP and the API (operator decision, 2026-09-29) |
 | BunkerWeb           | stores its configuration in SQLite                   |
 | OPNsense, VyOS      | fragile network hop and immature providers           |
 | VLAN zones now      | one node: an SDN Simple zone isolates the zones; VLAN or EVPN zones come with node 2 |
@@ -250,9 +270,11 @@ OIDC.
 - The CI VMs reach the vm-access connectors over SSH, so a compromised CI VM
   reaches the admin way in. It already holds the keys that change the whole
   infrastructure.
-- open-appsec is a piece never operated before. Its documentation is sparse and
-  unreliable in model training data: **do not invent syntax**, look up the
-  official docs.
+- The WAF (CrowdSec) learns nothing and protects only what its rules know:
+  virtual patching for known CVEs and IP reputation, not a model of each
+  application's normal traffic.
+- Longhorn's pods may egress anywhere: restricting it risks breaking storage
+  silently, for little gain (operator decision, 2026-09-29, gitops#10).
 
 ## Repos and policies
 
