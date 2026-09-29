@@ -28,7 +28,8 @@ Reserved so they never overlap:
 |----------|--------------|--------|---------------------------------------------------|
 | mgmt     | vm-access-01 | Debian | cloudflared connector of the admin tunnel (QUIC)  |
 | mgmt     | vm-access-02 | Debian | cloudflared connector of the admin tunnel (QUIC)  |
-| ci       | vm-ci        | Debian | two ephemeral GitHub Actions runners              |
+| ci       | vm-ci-01     | Debian | two ephemeral GitHub Actions runners              |
+| ci       | vm-ci-02     | Debian | two ephemeral GitHub Actions runners              |
 | platform | vm-lb-01     | Debian | HAProxy + keepalived; public tunnel connector     |
 | platform | vm-lb-02     | Debian | HAProxy + keepalived; public tunnel connector     |
 | platform | vm-rke2-01   | Rocky  | RKE2 server                                       |
@@ -43,8 +44,12 @@ workloads. In Kubernetes the role is configuration, not a different machine;
 three servers keep etcd's quorum through the loss of one VM.
 
 **Outside the cluster, deliberately:** the vm-access pair is the admin way in,
-and vm-ci builds and changes the infrastructure, the cluster included. Neither
-may depend on what it has to fix.
+and the vm-ci pair builds and changes the infrastructure, the cluster included.
+Neither may depend on what it has to fix.
+
+**Two CI VMs, identical** (operator decision, 2026-09-29): CI keeps running
+while one is down, and a job on one can rebuild the other, so no rebuild of a
+CI VM has to run from the laptop.
 
 **The RKE2 nodes run Rocky Linux 10**, the latest release RKE2 supports
 (RHEL 10 and its derivatives, with the package that allows `nf_conntrack`;
@@ -81,6 +86,7 @@ table is the target once the cluster exists:
 | mgmt     | node     | 22, 443, 8006                                           |
 | mgmt     | mgmt     | 22, between the vm-access connectors                    |
 | ci       | platform | 22, 6443                                                |
+| ci       | mgmt     | 22, from the CI VMs only: Ansible on the vm-access pair |
 | ci       | node     | 443, 8006 (API, not SSH)                                |
 | internet | node     | 22, break-glass; closed at the Hetzner firewall         |
 | platform | platform | the cluster's own traffic, and VRRP between the LBs     |
@@ -97,7 +103,9 @@ PBS, RustFS) is reached over WARP, where Gateway resolves its hostnames to the
 node's address in mgmt. If WARP breaks, the way back is that SSH, then the
 Hetzner Rescue system.
 
-No other zone initiates towards mgmt.
+No other zone initiates towards mgmt, with one exception: SSH from the CI VMs'
+addresses, not the whole `ci` zone, so the pipeline can run the vm-access
+playbook (operator decision, 2026-09-29).
 
 ## Flows
 
@@ -109,8 +117,11 @@ No other zone initiates towards mgmt.
 - **Admin**: WARP → admin tunnel → either vm-access connector → any zone. The
   Kubernetes API, SSH, Vault, Proxmox, PBS and RustFS are reached **only** this
   way, never through the public tunnel.
-- **Deploy**: infrastructure through the runner on vm-ci (Proxmox API, SSH);
-  what runs in the cluster through ArgoCD, from `gitops/clusters/prod/`.
+- **Deploy**: infrastructure through the runners on the CI VMs (Proxmox API,
+  SSH), OpenTofu, Packer and every Ansible playbook alike (operator decision,
+  2026-09-29): `--check`/plan on the PR, the real run on merge behind manual
+  approval. Nothing is applied from the laptop. What runs in the cluster goes
+  through ArgoCD, from `gitops/clusters/prod/`.
 - **Egress**: VM → `.1` of its zone → NAT behind the public IP.
 
 ## Stack
@@ -226,6 +237,9 @@ OIDC.
   applications get no new secrets.
 - The public tunnel's connectors run on the LB VMs: public traffic enters
   `platform`, never `mgmt`.
+- The CI VMs reach the vm-access connectors over SSH, so a compromised CI VM
+  reaches the admin way in. It already holds the keys that change the whole
+  infrastructure.
 - open-appsec is a piece never operated before. Its documentation is sparse and
   unreliable in model training data: **do not invent syntax**, look up the
   official docs.
