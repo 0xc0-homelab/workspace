@@ -180,8 +180,10 @@ the Proxmox API as a raw template that no VM clones:
 What is per VM or secret, the VM's role included, stays with cloud-init and
 Ansible.
 
-Templates carry no version and no fixed VMID: Proxmox assigns it, and
-everything finds a template by name. A rebuild deletes it and builds it again;
+Templates carry no version. Each takes a fixed VMID from its range (operator
+decision, 2026-09-29): 9000-9099 for the raw images, 9100-9199 for Packer's.
+VMs keep the VMIDs Proxmox assigns. Everything still finds a template by name.
+A rebuild deletes it and builds it again under the same VMID;
 VMs are full clones and ignore later changes to their template, so moving one
 onto a rebuilt template is a deliberate `rebuild`.
 
