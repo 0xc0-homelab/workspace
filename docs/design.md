@@ -133,16 +133,24 @@ self-hosted runners · RKE2 on Rocky Linux · HAProxy + keepalived · ArgoCD ·
 an ingress with open-appsec · Vault · Prometheus + Grafana · Hetzner Rescue as
 the emergency path.
 
-**ArgoCD is installed by OpenTofu, and everything else in the cluster by
-ArgoCD** (operator decision, 2026-09-27). A separate root,
-`infrastructure/environments/cluster/`, installs ArgoCD once Ansible has
-brought RKE2 up: it needs the cluster's API, which the root that creates the
-VMs cannot have yet. From there ArgoCD deploys every other component (the
-ingress, open-appsec, Vault, monitoring, applications) from the `gitops` repo.
+**ArgoCD is installed with the cluster, and everything else in the cluster by
+ArgoCD** (operator decision, 2026-09-29, replacing the OpenTofu root of
+2026-09-27). The Ansible playbook that brings RKE2 up also writes ArgoCD's
+`HelmChart` and its root `Application` into RKE2's manifests directory, and
+RKE2's own helm-controller installs it. An OpenTofu root would have needed
+Ansible to have run first, and the admin kubeconfig outside the servers;
+this needs neither. RKE2's helm-controller keeps managing ArgoCD itself, so
+two controllers never fight over it. From there ArgoCD deploys every other
+component (the ingress, open-appsec, Vault, monitoring, applications) from
+the `gitops` repo, which is public: no repo credentials. A private repo would
+get a read-only GitHub App, its key bootstrapped from SOPS the same way.
 
 **Vault runs in the cluster** (operator decision, 2026-09-24). The cluster
-boots with secrets from SOPS only, so it never needs Vault to start; ArgoCD
-then deploys Vault, and applications take their secrets from it. Vault is
+boots with secrets from SOPS only, so it never needs Vault to start: the RKE2
+token and ArgoCD's admin password go from SOPS, through Ansible, into files
+only root reads on the servers. ArgoCD then deploys Vault, and applications
+take their secrets from it through External Secrets Operator. No secret lives
+in `gitops`, not even encrypted, so ArgoCD never holds the age key. Vault is
 unsealed by hand after a restart. Which ingress controller carries open-appsec
 is chosen against open-appsec's documentation when it is built.
 
