@@ -144,6 +144,11 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
   names, code comments, commit messages, branch names, PR titles and bodies,
   docs. The conversation with the operator is in Spanish.
 - No `tofu apply`, `tofu destroy` or `ansible-playbook` without `--check`.
+- **Every workflow with steps of its own lives in `.github`**, as a reusable
+  workflow (operator decision, 2026-09-29). Every other repo holds only thin
+  callers: their triggers and paths, then
+  `uses: 0xc0-homelab/.github/.github/workflows/<name>.yml@main`. A new
+  pipeline starts there, never in the repo that uses it.
 - OpenTofu is **always** written as modules, with Google's layout:
   `modules/<name>/` for resources, `environments/<env>/` for roots, which only
   call modules. Each root has its own state key,
