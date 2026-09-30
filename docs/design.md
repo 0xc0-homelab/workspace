@@ -208,7 +208,10 @@ one KV v2 engine each, `platform/` (the shared services), `apps/` (the
 applications) and `ci/` (the pipelines), with paths `<engine>/<owner>/<name>`,
 the owner being the namespace or the repo. Keys inside are `snake_case`, and
 every secret carries `owner` and `rotated_at` metadata. A policy scopes to one
-owner; the `vault` repo defines engines, roles and policies, never values.
+owner; the `vault` repo defines engines, roles and policies, never values. A
+secret more than one consumer uses is not copied: it lives once, at
+`<engine>/shared/<name>`, and each consumer's policy grants it by name
+(operator decision, 2026-09-30).
 Dynamic engines (`pki/`, `database/`) come when something needs them. The
 full standard is in the `vault` repo's README.
 
