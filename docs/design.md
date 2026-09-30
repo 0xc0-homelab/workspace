@@ -196,6 +196,21 @@ follow-up). No agent injector: External
 Secrets Operator reads it. The init and unseal runbook is
 `gitops/platform/vault/README.md`.
 
+**Vault is configured with OpenTofu from its own repo, `vault`** (operator
+decision, 2026-09-30; .github#6): auth methods and roles, policies, secret
+engines. It is downstream of `gitops`, which deploys Vault, so the order stays
+linear: `.github → infrastructure → gitops → vault → app-*`. Its CI logs in
+with the job's GitHub OIDC token (JWT auth, `hashicorp/vault-action`): no Vault
+credential is stored. A PR plans read-only from any ref (role
+`terraform-plan`); only `main`, inside the `production` environment that waits
+for the operator, writes (role `terraform`). Neither policy touches a stored
+secret. The CI VMs reach Vault on the internal VIP (`ci → platform: 443`).
+The CI can only log in once its auth method and roles exist, so **the first
+apply of `vault` is local**: the operator runs it once, over WARP, with the
+root token (operator decision, 2026-09-30). It is the one exception to nothing
+being applied from the laptop; every change after it goes through the
+pipeline, and the root token is revoked once another admin way in exists.
+
 **The ingress is Traefik, with the Gateway API, and the WAF is CrowdSec**
 (operator decision, 2026-09-29). open-appsec was the plan, and it is deferred:
 every Kubernetes integration it has runs on something retired or unmaintained
@@ -295,6 +310,7 @@ OIDC.
 | Docker Compose on VMs | replaced by the cluster; `gitops` holds ArgoCD manifests |
 | Bug bounty lab      | reserved range, out of scope                         |
 | Flux                | operator decision (2026-09-22): GitOps is ArgoCD     |
+| One ordered pipeline for the cluster's deployment | the three steps stay apart: OpenTofu creates the VMs, Ansible configures them and installs ArgoCD, ArgoCD syncs gitops (operator decision, 2026-09-30, infrastructure#112) |
 
 ## Accepted risks
 

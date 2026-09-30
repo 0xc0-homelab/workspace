@@ -6,7 +6,7 @@ repo with its own remote. **Never make a commit that crosses repos.**
 
 Always start `claude` from here for work touching more than one repo.
 
-## CURRENT PHASE: 2 (Cluster)
+## CURRENT PHASE: 3 (Platform)
 
 1 Base · 2 Cluster · 3 Platform · 4 Resilience · 5 HA · 6 Applications
 
@@ -22,9 +22,10 @@ something requires it, say so and stop. Each phase is detailed in
 | `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks, skills) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
 | `gitops/`        | `gitops`          | clusters/prod/: ArgoCD manifests (phase 2)        |
+| `vault/`         | `vault`           | OpenTofu configuration of the cluster's Vault (phase 3) |
 | `app-*/`         | various           | applications                                    |
 
-Dependency order: `.github` → `infrastructure` → `gitops` → `app-*`.
+Dependency order: `.github` → `infrastructure` → `gitops` → `vault` → `app-*`.
 A downstream change is not merged until the upstream one is applied.
 
 ## Changes that cross repos
