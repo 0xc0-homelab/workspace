@@ -204,9 +204,12 @@ with the job's GitHub OIDC token (JWT auth, `hashicorp/vault-action`): no Vault
 credential is stored. A PR plans read-only from any ref (role
 `terraform-plan`); only `main`, inside the `production` environment that waits
 for the operator, writes (role `terraform`). Neither policy touches a stored
-secret. The CI VMs reach Vault on the internal VIP (`ci → platform: 443`). The
-auth method and those two roles are bootstrapped once by hand with the root
-token, then adopted.
+secret. The CI VMs reach Vault on the internal VIP (`ci → platform: 443`).
+The CI can only log in once its auth method and roles exist, so **the first
+apply of `vault` is local**: the operator runs it once, over WARP, with the
+root token (operator decision, 2026-09-30). It is the one exception to nothing
+being applied from the laptop; every change after it goes through the
+pipeline, and the root token is revoked once another admin way in exists.
 
 **The ingress is Traefik, with the Gateway API, and the WAF is CrowdSec**
 (operator decision, 2026-09-29). open-appsec was the plan, and it is deferred:
