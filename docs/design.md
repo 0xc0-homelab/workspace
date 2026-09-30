@@ -133,10 +133,18 @@ playbook (operator decision, 2026-09-29).
   Cloudflare account can be public: a CNAME to it from another account's zone
   (`offby1.cc`) fails at the edge (1014). external-dns comes ahead of phase 6
   on purpose (operator decision, 2026-09-29).
-- **Portals** (Grafana, ArgoCD): internal, reached only over WARP, through
-  the admin tunnel to Traefik on the VIP, where Gateway resolves their
-  hostnames. None has a public record (operator decision, 2026-09-29):
-  publishing one behind Cloudflare Access is deferred.
+- **Portals** (Grafana, ArgoCD, Headlamp): internal, reached only over WARP.
+  None has a public record (operator decision, 2026-09-29): publishing one
+  behind Cloudflare Access is deferred.
+- **Internal services** (operator decision, 2026-09-30): a path of their own,
+  separated by network. A second VIP on the LBs, `10.10.4.9`, sends its 443
+  to Traefik's `internal` entrypoint; Cloudflare Gateway resolves every
+  `*.int.0xc0.cc` name to it for WARP devices, and those names have no public
+  record. The public tunnel only ever targets the public VIP, so nothing from
+  the internet reaches the internal path. Headlamp, the Kubernetes UI, is the
+  first, at `headlamp.int.0xc0.cc`, logged into with a short-lived token. The
+  internal path has no WAF: CrowdSec's bouncer is on the public entrypoint
+  only.
 - **Admin**: WARP → admin tunnel → either vm-access connector → any zone. The
   Kubernetes API, SSH, Vault, Proxmox, PBS and RustFS are reached **only** this
   way, never through the public tunnel.
@@ -153,8 +161,9 @@ Proxmox VE 9 on a Hetzner dedicated server, 2× NVMe in mdadm RAID 0 ·
 PBS to a Hetzner Storage Box · RustFS for the OpenTofu state · Cloudflare Free
 (Tunnel, Access, WARP) · Packer + OpenTofu + Ansible · GitHub Actions with
 self-hosted runners · RKE2 on Rocky Linux · HAProxy + keepalived · ArgoCD ·
-Traefik with the Gateway API · CrowdSec · Longhorn · Vault · Prometheus +
-Grafana · Hetzner Rescue as the emergency path.
+Traefik with the Gateway API · CrowdSec · cert-manager with Let's Encrypt ·
+external-dns · Longhorn · Headlamp · Vault · Prometheus + Grafana · Hetzner
+Rescue as the emergency path.
 
 **ArgoCD is installed with the cluster, and everything else in the cluster by
 ArgoCD** (operator decision, 2026-09-29, replacing the OpenTofu root of
@@ -301,10 +310,9 @@ OIDC.
   also change the tunnels, Zero Trust and Access: whoever reads its Secret in
   the cluster gets all of that (operator decision, 2026-09-29). They get a
   DNS-only token with Vault (.github#6).
-- Public and internal names reach the same Traefik through the same HAProxy:
-  what keeps a portal internal is that it has no public record. A portal
-  should also refuse requests carrying `CF-Connecting-IP`, which only the
-  public tunnel sets.
+- A portal on the public path (`websecure`) stays internal only by having no
+  public record. Every internal service goes on the internal path instead,
+  which the public tunnel cannot reach.
 
 ## Repos and policies
 
