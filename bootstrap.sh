@@ -19,3 +19,4 @@ clone .github        .github
 clone claude-config  claude-config
 clone infrastructure infrastructure
 clone gitops         gitops
+clone vault          vault
