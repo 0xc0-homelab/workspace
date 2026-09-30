@@ -35,6 +35,7 @@ Reserved so they never overlap:
 | platform | vm-rke2-01   | Rocky  | RKE2 server                                       |
 | platform | vm-rke2-02   | Rocky  | RKE2 server                                       |
 | platform | vm-rke2-03   | Rocky  | RKE2 server                                       |
+| platform | vm-rke2-04   | Rocky  | RKE2 agent                                        |
 
 Sizes and addresses are in `infrastructure/docs/zones.md`.
 
@@ -42,6 +43,12 @@ Sizes and addresses are in `infrastructure/docs/zones.md`.
 decision, 2026-09-27): each runs the control plane and etcd, and takes
 workloads. In Kubernetes the role is configuration, not a different machine;
 three servers keep etcd's quorum through the loss of one VM.
+
+**Capacity grows with agents; etcd stays at three servers** (operator
+decision, 2026-09-30). An agent runs workloads only, with no control plane or
+etcd: a fourth server would tolerate no more failures than three, and two
+would tolerate none. `vm-rke2-04` is the first, sized and disked like the
+servers, Longhorn included. On one host it adds capacity, not availability.
 
 **Outside the cluster, deliberately:** the vm-access pair is the admin way in,
 and the vm-ci pair builds and changes the infrastructure, the cluster included.
@@ -183,8 +190,8 @@ layer 4, with no WAF of their own. open-appsec is reconsidered when public
 applications arrive, in phase 6.
 
 **Longhorn is the cluster's storage** (operator decision, 2026-09-29): the
-default `StorageClass`, three replicas, one per node, on each RKE2 server's two
-data disks. It has no backup target of its own: **PBS backs the VMs up whole**,
+default `StorageClass`, three replicas on different nodes, on each RKE2 node's
+two data disks, the agents' included. It has no backup target of its own: **PBS backs the VMs up whole**,
 data disks included, and that is what the timed restore tests.
 
 Zones are Proxmox SDN: one Simple zone, a VNet and a subnet per zone, the host
