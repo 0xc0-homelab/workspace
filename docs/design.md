@@ -185,6 +185,17 @@ take their secrets from it through External Secrets Operator. No secret lives
 in `gitops`, not even encrypted, so ArgoCD never holds the age key. Vault is
 unsealed by hand after a restart.
 
+**Vault's shape** (installed ahead of closing phase 2, at the operator's
+request, 2026-09-30; gitops#33): three servers in HA over integrated storage
+(Raft), one per RKE2 node, each on a Longhorn volume. Shamir seal: the keys
+live in the operator's password manager and offline, never in the cluster or
+SOPS. It is on the WARP-only path, `https://vault.int.0xc0.cc`; Traefik ends
+TLS, and inside the cluster the API is plain HTTP behind NetworkPolicies
+(Raft's port is TLS with Vault's own certificates; TLS on the API is a
+follow-up). No agent injector: External
+Secrets Operator reads it. The init and unseal runbook is
+`gitops/platform/vault/README.md`.
+
 **The ingress is Traefik, with the Gateway API, and the WAF is CrowdSec**
 (operator decision, 2026-09-29). open-appsec was the plan, and it is deferred:
 every Kubernetes integration it has runs on something retired or unmaintained
@@ -296,6 +307,9 @@ OIDC.
   separated by namespace and NetworkPolicy, not by zone.
 - Vault is sealed after every restart until it is unsealed by hand; meanwhile
   applications get no new secrets.
+- Inside the cluster Vault's API is plain HTTP, held in by NetworkPolicies,
+  until pod-to-pod TLS: tokens and secrets cross from Traefik to the pod
+  unencrypted.
 - The public tunnel's connectors run on the LB VMs: public traffic enters
   `platform`, never `mgmt`.
 - The CI VMs reach the vm-access connectors over SSH, so a compromised CI VM
