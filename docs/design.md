@@ -181,7 +181,7 @@ get a read-only GitHub App, its key bootstrapped from SOPS the same way.
 boots with secrets from SOPS only, so it never needs Vault to start: the RKE2
 token and ArgoCD's admin password go from SOPS, through Ansible, into files
 only root reads on the servers. ArgoCD then deploys Vault, and applications
-take their secrets from it through External Secrets Operator. No secret lives
+take their secrets from it through Vault Secrets Operator. No secret lives
 in `gitops`, not even encrypted, so ArgoCD never holds the age key. Vault is
 unsealed by hand after a restart.
 
@@ -192,9 +192,25 @@ live in the operator's password manager and offline, never in the cluster or
 SOPS. It is on the WARP-only path, `https://vault.int.0xc0.cc`; Traefik ends
 TLS, and inside the cluster the API is plain HTTP behind NetworkPolicies
 (Raft's port is TLS with Vault's own certificates; TLS on the API is a
-follow-up). No agent injector: External
-Secrets Operator reads it. The init and unseal runbook is
-`gitops/platform/vault/README.md`.
+follow-up). No agent injector: Vault Secrets Operator reads it. The init and
+unseal runbook is `gitops/platform/vault/README.md`.
+
+**Vault Secrets Operator, not External Secrets Operator** (operator decision,
+2026-09-30). Vault is the only backend, so ESO's reach across backends buys
+nothing, while VSO renews dynamic secrets' leases (the data services'
+short-lived credentials) and restarts what uses a secret when it changes,
+with no Reloader beside it. No global access: each namespace brings its own
+`VaultAuth`, bound to a Kubernetes auth role named after it, which reads only
+its own paths.
+
+**Secrets are laid out by trust boundary** (operator decision, 2026-09-30):
+one KV v2 engine each, `platform/` (the shared services), `apps/` (the
+applications) and `ci/` (the pipelines), with paths `<engine>/<owner>/<name>`,
+the owner being the namespace or the repo. Keys inside are `snake_case`, and
+every secret carries `owner` and `rotated_at` metadata. A policy scopes to one
+owner; the `vault` repo defines engines, roles and policies, never values.
+Dynamic engines (`pki/`, `database/`) come when something needs them. The
+full standard is in the `vault` repo's README.
 
 **Vault is configured with OpenTofu from its own repo, `vault`** (operator
 decision, 2026-09-30; .github#6): auth methods and roles, policies, secret
