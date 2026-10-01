@@ -133,7 +133,7 @@ playbook (operator decision, 2026-09-29).
   Cloudflare account can be public: a CNAME to it from another account's zone
   (`offby1.cc`) fails at the edge (1014). external-dns comes ahead of phase 6
   on purpose (operator decision, 2026-09-29).
-- **Portals** (Grafana, ArgoCD, Headlamp): internal, reached only over WARP.
+- **Portals** (OpenObserve, ArgoCD, Headlamp): internal, reached only over WARP.
   None has a public record (operator decision, 2026-09-29): publishing one
   behind Cloudflare Access is deferred.
 - **Internal services** (operator decision, 2026-09-30): a path of their own,
@@ -162,8 +162,8 @@ PBS to a Hetzner Storage Box · RustFS for the OpenTofu state · Cloudflare Free
 (Tunnel, Access, WARP) · Packer + OpenTofu + Ansible · GitHub Actions with
 self-hosted runners · RKE2 on Rocky Linux · HAProxy + keepalived · ArgoCD ·
 Traefik with the Gateway API · CrowdSec · cert-manager with Let's Encrypt ·
-external-dns · Longhorn · Headlamp · Vault · Prometheus + Grafana · Hetzner
-Rescue as the emergency path.
+external-dns · Longhorn · Headlamp · Vault · OpenObserve with the
+OpenTelemetry Operator · Hetzner Rescue as the emergency path.
 
 **ArgoCD is installed with the cluster, and everything else in the cluster by
 ArgoCD** (operator decision, 2026-09-29, replacing the OpenTofu root of
@@ -195,6 +195,18 @@ TLS, and inside the cluster the API is plain HTTP behind NetworkPolicies
 (Raft's port is TLS with Vault's own certificates; TLS on the API is a
 follow-up). No agent injector: Vault Secrets Operator reads it. The init and
 unseal runbook is `gitops/platform/vault/README.md`.
+
+**OpenObserve for metrics, logs and traces** (operator decision, 2026-10-01;
+gitops#44), the lightest way to have all three: one backend, single node, on
+a Longhorn volume, with its own dashboards and alerts, and PromQL for the
+metrics. It replaces Prometheus + Grafana, and lifts the discard of logs and
+traces. The OpenTelemetry Operator runs the collectors: one agent per node
+for every container's logs and the nodes' and pods' metrics, and one gateway
+for traces over OTLP, Kubernetes events, and every Prometheus target, which
+each component declares with a ServiceMonitor and its target allocator finds.
+The control plane's metrics (etcd, scheduler, controller manager) are exposed
+on the RKE2 servers for it. Retention is 30 days. The open-source edition
+has no SSO: its own users, on the WARP-only path, `https://o2.int.0xc0.cc`.
 
 **Vault Secrets Operator, not External Secrets Operator** (operator decision,
 2026-09-30). Vault is the only backend, so ESO's reach across backends buys
@@ -271,8 +283,9 @@ RustFS stays closed. The cluster comes in phase 2 (operator decision,
    (CrowdSec), cert-manager with Let's Encrypt, external-dns. Backups through
    PBS with a timed restore.
 3. **Platform** — Vault in the cluster with OIDC and a progressive migration
-   off SOPS, credential rotation with it; Prometheus + Grafana with alerts to
-   the phone; data services (Postgres, Redis) in the cluster.
+   off SOPS, credential rotation with it; OpenObserve for metrics, logs and
+   traces, with alerts to the phone; data services (Postgres, Redis) in the
+   cluster.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
 5. **HA** — node 2, QDevice, storage replication, SDN zones across both nodes,
    the three RKE2 servers spread over the two nodes. Node 1 has no ZFS (mdadm RAID
@@ -340,7 +353,8 @@ is gone.
 | Terraform Stacks    | paid                                                 |
 | OpenBao             | Vault's BSL does not affect this case                |
 | SOPS+age            | replaced by Vault: every secret in one place, read over OIDC, nothing in the repos (operator decision, 2026-10-01) |
-| Loki, Tempo now     | Prometheus + Grafana only, for now                   |
+| Prometheus + Grafana, Loki, Tempo | replaced by OpenObserve, one light backend for the three signals (operator decision, 2026-10-01) |
+| VictoriaMetrics + VictoriaLogs | lighter than LGTM, but three backends to run where OpenObserve is one (operator decision, 2026-10-01) |
 | Two K8s clusters    | same hardware, adds no isolation; one cluster, separated by namespace (operator decision, 2026-09-24) |
 | A VM per role after phase 1 (vm-edge, vm-apps, vm-data, vm-vault, vm-platform) | replaced by the cluster (operator decision, 2026-09-24) |
 | Docker Compose on VMs | replaced by the cluster; `gitops` holds ArgoCD manifests |
