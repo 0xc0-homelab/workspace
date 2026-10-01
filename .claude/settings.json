@@ -11,7 +11,6 @@
       "Bash(ansible-lint:*)",
       "Bash(ansible-inventory:*)",
       "Bash(docker compose config:*)",
-      "Bash(sops --encrypt:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",

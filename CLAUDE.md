@@ -155,7 +155,9 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
   call modules. Each root has its own state key,
   `homelab/<repo>/<environment>.tfstate` in RustFS, never a shared one. Full
   conventions in `.github/README.md`.
-- Secrets with SOPS+age. An unencrypted file holding sensitive material is a bug.
+- Secrets live in Vault (`vault` repo, README), never in a repo, not even
+  encrypted. A file holding sensitive material is a bug. The operator writes and
+  rotates them; Claude writes policies and wiring, never a value.
 - Before proposing any IP or subnet, check it against `zones` and `vms` in
   `infrastructure/environments/prod/terraform.tfvars` and the reserved ranges
   in `infrastructure/docs/zones.md`, which are off limits.
@@ -184,10 +186,11 @@ Nothing is exposed to the internet: Traefik on the node (the host's reverse
 proxy, not the cluster's ingress) is reached over WARP.
 Every VM carries `prevent_destroy`.
 
-Phase 2 builds one RKE2 cluster on Rocky Linux in `platform`, behind an HAProxy
+Phase 2 built one RKE2 cluster on Rocky Linux in `platform`, behind an HAProxy
 load balancer that also carries the public tunnel; everything after phase 1
-runs in it (`docs/design.md`). Credential rotation comes with Vault, in
-phase 3.
+runs in it (`docs/design.md`).
 
-Secrets reach CI through SOPS: each repo commits its encrypted
-`secrets/tofu.sops.yaml` and holds one Actions secret, its CI age key.
+Phase 3 runs Vault in the cluster, and every secret lives there. CI logs in
+with GitHub's OIDC token, one JWT role per repo, and no repo holds a secret or
+an Actions secret. The cluster's components read theirs through Vault Secrets
+Operator. Rotation is the operator's, by hand in Vault (.github#6).
