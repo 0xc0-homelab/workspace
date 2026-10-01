@@ -175,21 +175,22 @@ this needs neither. RKE2's helm-controller keeps managing ArgoCD itself, so
 two controllers never fight over it. From there ArgoCD deploys every other
 component (Longhorn, Traefik, CrowdSec, Vault, monitoring, applications) from
 the `gitops` repo, which is public: no repo credentials. A private repo would
-get a read-only GitHub App, its key bootstrapped from SOPS the same way.
+get a read-only GitHub App, its key from Vault through Ansible the same way.
 
-**Vault runs in the cluster** (operator decision, 2026-09-24). The cluster
-boots with secrets from SOPS only, so it never needs Vault to start: the RKE2
-token and ArgoCD's admin password go from SOPS, through Ansible, into files
-only root reads on the servers. ArgoCD then deploys Vault, and applications
-take their secrets from it through Vault Secrets Operator. No secret lives
-in `gitops`, not even encrypted, so ArgoCD never holds the age key. Vault is
-unsealed by hand after a restart.
+**Vault runs in the cluster** (operator decision, 2026-09-24). A running
+cluster never needs Vault to start: the RKE2 token and ArgoCD's admin password
+are already in files only root reads on the servers, written there by Ansible,
+which reads them from Vault (`ci/infrastructure/*`). ArgoCD deploys Vault, and
+the components take their secrets from it through Vault Secrets Operator. No
+secret lives in `gitops`, not even encrypted. Vault is unsealed by hand after a
+restart. A cluster built from nothing needs Vault restored first, from PBS:
+the accepted risk below.
 
 **Vault's shape** (installed ahead of closing phase 2, at the operator's
 request, 2026-09-30; gitops#33): three servers in HA over integrated storage
 (Raft), one per RKE2 node, each on a Longhorn volume. Shamir seal: the keys
 live in the operator's password manager and offline, never in the cluster or
-SOPS. It is on the WARP-only path, `https://vault.int.0xc0.cc`; Traefik ends
+any repo. It is on the WARP-only path, `https://vault.int.0xc0.cc`; Traefik ends
 TLS, and inside the cluster the API is plain HTTP behind NetworkPolicies
 (Raft's port is TLS with Vault's own certificates; TLS on the API is a
 follow-up). No agent injector: Vault Secrets Operator reads it. The init and
@@ -213,7 +214,9 @@ secret more than one consumer uses is not copied: it lives once, at
 `<engine>/shared/<name>`, and each consumer's policy grants it by name
 (operator decision, 2026-09-30).
 Dynamic engines (`pki/`, `database/`) come when something needs them. The
-full standard is in the `vault` repo's README.
+full standard is in the `vault` repo's README. In phase 6, `apps/` takes one
+templated policy for every namespace, which reads the path of the namespace
+the login comes from, instead of one policy each (noted 2026-10-01).
 
 **Vault is configured with OpenTofu from its own repo, `vault`** (operator
 decision, 2026-09-30; .github#6): auth methods and roles, policies, secret
@@ -303,12 +306,25 @@ onto a rebuilt template is a deliberate `rebuild`.
 
 ## Secrets
 
-SOPS+age, and the encrypted files are **committed** (operator decision,
-2026-09-23), even though the repos are public. Each file is encrypted to the
-operator's key and to that repo's own CI key, which is the only Actions secret
-the repo holds. CI decrypts with SOPS; no decrypted copies live in GitHub. From
-phase 2 the CI keys move to `vm-ci`; from phase 3 secrets migrate to Vault over
-OIDC.
+**Every secret lives in Vault, and none in a repo** (operator decision,
+2026-10-01, .github#6), not even encrypted. SOPS, which held them until then,
+is gone.
+
+- **Layout:** the engines by trust boundary (`ci/`, `platform/`, `apps/`), the
+  paths and the shared rule are above, under the stack's Vault.
+- **CI:** each job logs in with GitHub's OIDC token. There is one JWT role per
+  repo, bound to its repository and to `.github`'s reusable workflows on
+  `main`, and a policy that names what it reads. No Vault credential and no
+  Actions secret is stored anywhere.
+- **The cluster:** each component reads through Vault Secrets Operator, with a
+  Kubernetes auth role per namespace. What RKE2 and ArgoCD boot with, Ansible
+  reads from Vault in CI.
+- **Locally:** the scripts read Vault with the operator's token (`vault login
+  -no-print`, over WARP), into the environment only.
+- **Writing and rotating:** the operator does it by hand, in Vault (`vault`
+  repo, README). The Cloudflare token is the one credential that crosses
+  engines: one copy in `ci/shared/cloudflare` and one in
+  `platform/shared/cloudflare`, rotated together.
 
 ## Discarded — do not propose
 
@@ -323,6 +339,7 @@ OIDC.
 | VLAN zones now      | one node: an SDN Simple zone isolates the zones; VLAN or EVPN zones come with node 2 |
 | Terraform Stacks    | paid                                                 |
 | OpenBao             | Vault's BSL does not affect this case                |
+| SOPS+age            | replaced by Vault: every secret in one place, read over OIDC, nothing in the repos (operator decision, 2026-10-01) |
 | Loki, Tempo now     | Prometheus + Grafana only, for now                   |
 | Two K8s clusters    | same hardware, adds no isolation; one cluster, separated by namespace (operator decision, 2026-09-24) |
 | A VM per role after phase 1 (vm-edge, vm-apps, vm-data, vm-vault, vm-platform) | replaced by the cluster (operator decision, 2026-09-24) |
@@ -357,8 +374,14 @@ OIDC.
   silently, for little gain (operator decision, 2026-09-29, gitops#10).
 - cert-manager and external-dns use OpenTofu's Cloudflare token, which can
   also change the tunnels, Zero Trust and Access: whoever reads its Secret in
-  the cluster gets all of that (operator decision, 2026-09-29). They get a
-  DNS-only token with Vault (.github#6).
+  the cluster gets all of that (operator decision, 2026-09-29). One token
+  serves both, in Vault (`platform/shared/cloudflare`); a DNS-only one was
+  turned down (operator decision, 2026-09-30).
+- Every secret lives in Vault and nowhere else (operator decision,
+  2026-10-01). With the cluster or Vault down, no pipeline runs and no local
+  script gets credentials until Vault is restored from PBS and unsealed (the
+  runbook is in the `vault` repo's README). PBS's backup of the RKE2 servers is
+  the only other copy.
 - A portal on the public path (`websecure`) stays internal only by having no
   public record. Every internal service goes on the internal path instead,
   which the public tunnel cannot reach.
