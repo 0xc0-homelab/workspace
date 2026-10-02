@@ -279,6 +279,16 @@ server whole, every database at once, so a nightly logical dump per database
 lets one application be restored alone. An application that needs another
 engine version gets its own server, as the exception.
 
+**Mautic comes ahead of phase 6** (operator decision, 2026-10-02;
+gitops#73), as Vault came ahead of closing phase 2: one instance, no tenants.
+The official image's three roles (web, cron, worker) run as containers of one
+pod, sharing one Longhorn RWO volume, so there is no RWX volume and no NFS
+share-manager. Its database is in the shared MariaDB. It is public at
+`mautic.0xc0.cc` for what contacts reach. Every admin path (`/s`, the
+installer, the API) redirects to `mautic.int.0xc0.cc`, WARP only, so its login
+is never on the internet. It runs from `apps/`, under its own narrower
+`AppProject`.
+
 Zones are Proxmox SDN: one Simple zone, a VNet and a subnet per zone, the host
 as `.1` and SNAT for egress, all in OpenTofu through `bpg/proxmox`. Zones
 spanning nodes come with node 2. Native Proxmox firewall through the same
