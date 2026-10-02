@@ -285,8 +285,9 @@ The official image's three roles (web, cron, worker) run as containers of one
 pod, sharing one Longhorn RWO volume, so there is no RWX volume and no NFS
 share-manager. Its database is in the shared MariaDB. It is public at
 `mautic.0xc0.cc` for what contacts reach. Every admin path (`/s`, the
-installer, the API) redirects to `mautic.int.0xc0.cc`, WARP only, so its login
-is never on the internet. It runs from `apps/`, under its own narrower
+installer, the API) answers 403 there, with no hint of the internal name
+(operator decision, 2026-10-02; gitops#78), and is reached only at
+`mautic.int.0xc0.cc`, WARP only, so its login is never on the internet. It runs from `apps/`, under its own narrower
 `AppProject`.
 
 Zones are Proxmox SDN: one Simple zone, a VNet and a subnet per zone, the host
