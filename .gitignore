@@ -8,6 +8,7 @@
 /gitops/
 /infrastructure/
 /vault/
+/offby1.cc/
 /app-*/
 
 # Personal mise overrides, never shared.
