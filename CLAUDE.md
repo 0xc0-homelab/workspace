@@ -23,9 +23,11 @@ something requires it, say so and stop. Each phase is detailed in
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
 | `gitops/`        | `gitops`          | clusters/prod/: ArgoCD manifests (phase 2)        |
 | `vault/`         | `vault`           | OpenTofu configuration of the cluster's Vault (phase 3) |
+| `offby1.cc/`     | `offby1.cc`       | Next.js landing page for offby1.cc              |
 | `app-*/`         | various           | applications                                    |
 
-Dependency order: `.github` → `infrastructure` → `gitops` → `vault` → `app-*`.
+Dependency order: `.github` → `infrastructure` → `gitops` → `vault` →
+`offby1.cc` and `app-*`.
 A downstream change is not merged until the upstream one is applied.
 
 ## Changes that cross repos
