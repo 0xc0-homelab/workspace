@@ -269,6 +269,16 @@ default `StorageClass`, three replicas on different nodes, on each RKE2 node's
 two data disks, the agents' included. It has no backup target of its own: **PBS backs the VMs up whole**,
 data disks included, and that is what the timed restore tests.
 
+**One shared MariaDB for the applications that need MySQL** (operator
+decision, 2026-10-02; gitops#71): one server in `platform/mariadb`, one
+database and one user per application, never a server per application.
+MariaDB over MySQL: fully GPL, lighter at rest, and both Mautic and WordPress
+support it. A plain StatefulSet from the official image, **no operator**: it
+costs memory the cluster does not have to spare. PBS's backup restores the
+server whole, every database at once, so a nightly logical dump per database
+lets one application be restored alone. An application that needs another
+engine version gets its own server, as the exception.
+
 Zones are Proxmox SDN: one Simple zone, a VNet and a subnet per zone, the host
 as `.1` and SNAT for egress, all in OpenTofu through `bpg/proxmox`. Zones
 spanning nodes come with node 2. Native Proxmox firewall through the same
@@ -290,8 +300,8 @@ RustFS stays closed. The cluster comes in phase 2 (operator decision,
    PBS with a timed restore.
 3. **Platform** — Vault in the cluster with OIDC and a progressive migration
    off SOPS, credential rotation with it; OpenObserve for metrics, logs and
-   traces, with alerts to the phone; data services (Postgres, Redis) in the
-   cluster.
+   traces, with alerts to the phone; data services (Postgres, MariaDB, Redis)
+   in the cluster.
 4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
 5. **HA** — node 2, QDevice, storage replication, SDN zones across both nodes,
    the three RKE2 servers spread over the two nodes. Node 1 has no ZFS (mdadm RAID
