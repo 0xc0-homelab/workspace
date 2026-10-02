@@ -219,7 +219,13 @@ its own paths.
 **Secrets are laid out by trust boundary** (operator decision, 2026-09-30):
 one KV v2 engine each, `platform/` (the shared services), `apps/` (the
 applications) and `ci/` (the pipelines), with paths `<engine>/<owner>/<name>`,
-the owner being the namespace or the repo. Keys inside are `snake_case`, and
+the owner being the namespace or the repo. A fourth, `ops/`, holds what only
+people use, UI logins and passwords in clear, and no machine has a policy on
+it (operator decision, 2026-10-02). A credential both need gets a form for
+each: the machine the bcrypt or the htpasswd line, the person the password. A
+secret belongs to the service it is for, not to its reader: ArgoCD's is
+`platform/argocd/admin`, granted by name to infrastructure's CI, which writes
+it into the cluster. Keys inside are `snake_case`, and
 every secret carries `owner` and `rotated_at` metadata. A policy scopes to one
 owner; the `vault` repo defines engines, roles and policies, never values. A
 secret more than one consumer uses is not copied: it lives once, at
@@ -323,8 +329,9 @@ onto a rebuilt template is a deliberate `rebuild`.
 2026-10-01, .github#6), not even encrypted. SOPS, which held them until then,
 is gone.
 
-- **Layout:** the engines by trust boundary (`ci/`, `platform/`, `apps/`), the
-  paths and the shared rule are above, under the stack's Vault.
+- **Layout:** the engines by trust boundary (`ci/`, `platform/`, `apps/`) and
+  `ops/` for people; the paths, the shared rule and one service per path are
+  above, under the stack's Vault.
 - **CI:** each job logs in with GitHub's OIDC token. There is one JWT role per
   repo, bound to its repository and to `.github`'s reusable workflows on
   `main`, and a policy that names what it reads. No Vault credential and no
@@ -338,6 +345,11 @@ is gone.
   repo, README). The Cloudflare token is the one credential that crosses
   engines: one copy in `ci/shared/cloudflare` and one in
   `platform/shared/cloudflare`, rotated together.
+- **Outside Vault:** what restoring Vault takes cannot live in it. The unseal
+  keys and root token, PBS and its Storage Box, Hetzner Robot and Rescue,
+  Proxmox `root@pam`, RustFS admin, and the Cloudflare and GitHub accounts
+  with their 2FA are kept in the operator's password manager and an offline
+  copy (`vault` README, "Recovery credentials: outside Vault").
 
 ## Discarded — do not propose
 
