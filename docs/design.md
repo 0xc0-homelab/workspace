@@ -396,6 +396,13 @@ is gone.
   script gets credentials until Vault is restored from PBS and unsealed (the
   runbook is in the `vault` repo's README). PBS's backup of the RKE2 servers is
   the only other copy.
+- The control plane's metrics are reachable from the whole `platform` zone
+  (operator decision, 2026-10-02; infrastructure#158): etcd's on 2381, plain
+  HTTP and unauthenticated, and the scheduler's and controller manager's on
+  10259 and 10257, behind the API's authorization. That includes the load
+  balancers, whose cloudflared connectors face the internet. They expose
+  telemetry, not data or control; narrowing them to the RKE2 VMs needs the
+  transit matrix to name cluster VMs as sources.
 - A portal on the public path (`websecure`) stays internal only by having no
   public record. Every internal service goes on the internal path instead,
   which the public tunnel cannot reach.
