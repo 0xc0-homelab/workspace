@@ -186,14 +186,15 @@ secret lives in `gitops`, not even encrypted. Vault is unsealed by hand after a
 restart. A cluster built from nothing needs Vault restored first, from PBS:
 the accepted risk below.
 
-**Vault's shape** (at the operator's request, 2026-09-30; gitops#33): three servers in HA over integrated storage
-(Raft), one per RKE2 node, each on a Longhorn volume. Shamir seal: the keys
+**Vault's shape** (at the operator's request, 2026-09-30; gitops#33): three
+servers in HA over integrated storage (Raft), one per RKE2 node, each on a
+Longhorn volume. Shamir seal: the keys
 live in the operator's password manager and offline, never in the cluster or
 any repo. It is on the WARP-only path, `https://vault.int.0xc0.cc`; Traefik ends
 TLS, and inside the cluster the API is plain HTTP behind NetworkPolicies
-(Raft's port is TLS with Vault's own certificates; the API has no TLS of
-its own). No agent injector: Vault Secrets Operator reads it. The init and
-unseal runbook is `gitops/platform/vault/README.md`.
+(Raft's port is TLS with Vault's own certificates; there is no TLS between
+pods on the API). No agent injector: Vault Secrets Operator reads it. The
+init and unseal runbook is `gitops/platform/vault/README.md`.
 
 **OpenObserve for metrics, logs and traces** (operator decision, 2026-10-01;
 gitops#44), the lightest way to have all three: one backend, single node, on
@@ -249,20 +250,22 @@ secret more than one consumer uses is not copied: it lives once, at
 `<engine>/shared/<name>`, and each consumer's policy grants it by name
 (operator decision, 2026-09-30).
 There are no dynamic engines (`pki/`, `database/`); one is added when
-something needs it. `apps/` has one templated policy for every namespace,
-which reads the path of the namespace the login comes from, instead of one
-policy each (noted 2026-10-01). The full standard is in the `vault` repo's
-README.
+something needs it. `apps/` has one Kubernetes auth role, `apps`, for every
+namespace labelled `vault.0xc0.cc/apps`, and one templated policy, which
+reads the path of the namespace the login comes from instead of one policy
+each (noted 2026-10-01), plus `apps/shared/openobserve-rum` by name. The
+full standard is in the `vault` repo's README.
 
 **Vault is configured with OpenTofu from its own repo, `vault`** (operator
 decision, 2026-09-30; .github#6): auth methods and roles, policies, secret
 engines. It is downstream of `gitops`, which deploys Vault, so the order stays
-linear: `.github → infrastructure → gitops → vault → app-*`. Its CI logs in
-with the job's GitHub OIDC token (JWT auth, `hashicorp/vault-action`): no Vault
-credential is stored. A PR plans read-only from any ref (role
-`terraform-plan`); only `main`, inside the `production` environment that waits
-for the operator, writes (role `terraform`). Neither policy touches a stored
-secret. The CI VMs reach Vault on the internal VIP (`ci → platform: 443`).
+linear: `.github → infrastructure → gitops → vault → offby1.cc and app-*`.
+Its CI logs in with the job's GitHub OIDC token (JWT auth,
+`hashicorp/vault-action`): no Vault credential is stored. A PR plans
+read-only from any ref (role `terraform-plan`); only `main`, inside the
+`production` environment that waits for the operator, writes (role
+`terraform`). Neither policy touches a stored secret. The CI VMs
+reach Vault on the internal VIP (`ci → platform: 443`).
 The CI can only log in once its auth method and roles exist, so **the first
 apply of `vault` is local**: the operator runs it once, over WARP, with the
 root token (operator decision, 2026-09-30). It is the one exception to nothing
