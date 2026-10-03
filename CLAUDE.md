@@ -6,14 +6,6 @@ repo with its own remote. **Never make a commit that crosses repos.**
 
 Always start `claude` from here for work touching more than one repo.
 
-## CURRENT PHASE: 3 (Platform)
-
-1 Base · 2 Cluster · 3 Platform · 4 Resilience · 5 HA · 6 Applications
-
-Do not implement anything from later phases even if it fits technically. If
-something requires it, say so and stop. Each phase is detailed in
-`docs/design.md`.
-
 ## Repos
 
 | Directory        | Repo              | Contents                                        |
@@ -21,8 +13,8 @@ something requires it, say so and stop. Each phase is detailed in
 | `.github/`       | `.github`         | org Terraform + reusable workflows              |
 | `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks, skills) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
-| `gitops/`        | `gitops`          | clusters/prod/: ArgoCD manifests (phase 2)        |
-| `vault/`         | `vault`           | OpenTofu configuration of the cluster's Vault (phase 3) |
+| `gitops/`        | `gitops`          | ArgoCD manifests: `bootstrap/prod/`, `platform/`, `apps/` |
+| `vault/`         | `vault`           | OpenTofu configuration of the cluster's Vault   |
 | `offby1.cc/`     | `offby1.cc`       | Next.js landing page for offby1.cc              |
 | `app-*/`         | various           | applications                                    |
 
@@ -44,7 +36,7 @@ The org project board (`github.com/orgs/0xc0-labs/projects/1`) is the source
 of truth for the state of work. **No work starts without an issue on it.**
 
 1. Before editing anything, find the issue for the task, or open one in the
-   repo it belongs to and add it to the board with `Phase` set.
+   repo it belongs to and add it to the board.
 2. Move it to `In Progress` when you start, `Blocked` when it waits on
    something outside the task.
 3. Every PR body links it: `Closes #N`, or `Refs owner/repo#N` from a sibling
@@ -171,31 +163,32 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 
 ## Status
 
-The design is closed (`docs/design.md`). The org is bootstrapped: the five
-repos exist, created by `.github/environments/prod`, with their rulesets active
-and every change going through a PR linked to an issue.
+The design is closed (`docs/design.md`). The org is bootstrapped: every repo
+is created by `.github/environments/prod`, with its ruleset active, and every
+change goes through a PR linked to an issue.
 
-Phase 1 is complete: `infrastructure` runs the node from its OpenTofu root
-(`environments/prod`):
+What runs today:
 
-- the SDN zones;
-- the templates every VM clones, `debian-13-base` and `debian-13-runner`,
-  baked by Packer from the raw `debian-13-cloud` that OpenTofu imports;
-- `vm-access-01` and `vm-access-02`, identical cloudflared connectors over
-  QUIC, with admin access over WARP;
-- `vm-ci` with two ephemeral GitHub Actions runners, so CI runs inside the
-  network and RustFS stays closed;
-- the zone firewall, and the node's firewall on DROP.
+- **The node** (`pve-1`), run by `infrastructure` from its OpenTofu root
+  (`environments/prod`): the SDN zones (`mgmt`, `ci`, `platform`), the zone
+  firewall, and the node's firewall on DROP. Traefik on the node (the host's
+  reverse proxy, not the cluster's ingress) is reached over WARP only.
+- **The templates** every VM clones, baked by Packer from the official
+  Debian and Rocky cloud images that OpenTofu imports.
+- **The VMs outside the cluster**: `vm-access-01` and `vm-access-02`,
+  identical cloudflared connectors of the admin tunnel (WARP); `vm-ci-01` and
+  `vm-ci-02`, each with two ephemeral GitHub Actions runners, so CI runs
+  inside the network and RustFS stays closed.
+- **One RKE2 cluster** on Rocky Linux in `platform`, behind the HAProxy load
+  balancers that also carry the public tunnel. ArgoCD deploys everything else
+  in it from `gitops`. The `vm-lb` pair and the `vm-rke2` nodes are its VMs.
+- **Vault** in the cluster, holding every secret. CI logs in with GitHub's
+  OIDC token, one JWT role per repo, and no repo holds a secret or an Actions
+  secret. The cluster's components read theirs through Vault Secrets
+  Operator. Rotation is the operator's, by hand in Vault (.github#6).
+- **OpenObserve** for logs, metrics and traces, fed by the OpenTelemetry
+  Operator's collectors.
+- **The applications**: the `offby1.cc` landing page and Mautic, from
+  `gitops/apps/`.
 
-Nothing is exposed to the internet: Traefik on the node (the host's reverse
-proxy, not the cluster's ingress) is reached over WARP.
 Every VM carries `prevent_destroy`.
-
-Phase 2 built one RKE2 cluster on Rocky Linux in `platform`, behind an HAProxy
-load balancer that also carries the public tunnel; everything after phase 1
-runs in it (`docs/design.md`).
-
-Phase 3 runs Vault in the cluster, and every secret lives there. CI logs in
-with GitHub's OIDC token, one JWT role per repo, and no repo holds a secret or
-an Actions secret. The cluster's components read theirs through Vault Secrets
-Operator. Rotation is the operator's, by hand in Vault (.github#6).
