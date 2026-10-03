@@ -270,7 +270,8 @@ The CI can only log in once its auth method and roles exist, so **the first
 apply of `vault` is local**: the operator runs it once, over WARP, with the
 root token (operator decision, 2026-09-30). It is the one exception to nothing
 being applied from the laptop; every change after it goes through the
-pipeline, and the root token is revoked once another admin way in exists.
+pipeline. The root token is kept, outside Vault, with the unseal keys
+(operator decision, 2026-10-04).
 
 **The ingress is Traefik, with the Gateway API, and the WAF is CrowdSec**
 (operator decision, 2026-09-29). open-appsec was the plan, and it was set aside:
@@ -440,6 +441,7 @@ is gone.
 ## Repos and policies
 
 `infrastructure` and `.github`: `main` only, PR required, apply behind manual
-approval. `app-*`: test→prod promotion of the same digest.
+approval. Applications: each decides whether it has a test environment; one
+that does promotes test→prod with the same digest, never a rebuild.
 ArgoCD points at `gitops/bootstrap/prod/`, which deploys `platform/` and
 `apps/`.
