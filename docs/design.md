@@ -208,6 +208,24 @@ The control plane's metrics (etcd, scheduler, controller manager) are exposed
 on the RKE2 servers for it. Retention is 30 days. The open-source edition
 has no SSO: its own users, on the WARP-only path, `https://o2.int.0xc0.cc`.
 
+**Every application is observable from the day it is deployed** (operator
+decision, 2026-10-03; workspace#52). The change that deploys it ships all of
+this, never a follow-up:
+- **logs:** to stdout or stderr, with a level the collector can parse. A log
+  the application writes to a file is followed onto stdout by a sidecar
+  (Mautic's).
+- **metrics:** at least Traefik's per-route traffic and the kubelet's per-pod
+  resources, on the "Apps" dashboard; its own endpoint, with a ServiceMonitor,
+  when it has one.
+- **traces:** OTLP to the collector's gateway, joined to Traefik's trace
+  through `traceparent`. That means egress to the gateway, and the namespace
+  admitted in the collector's `otlp-from-senders`.
+- **RUM, when it has a frontend:** OpenObserve's browser SDK, sending through
+  the application's own name (`/rum/v1/default/rum`, POST only, rate limited,
+  with a ReferenceGrant to OpenObserve). It stores nothing on the visitor's
+  browser and records no session replay, so it needs no consent banner. The
+  client token is public by design, and lives in Vault like any credential.
+
 **Vault Secrets Operator, not External Secrets Operator** (operator decision,
 2026-09-30). Vault is the only backend, so ESO's reach across backends buys
 nothing, while VSO renews dynamic secrets' leases (the data services'

@@ -143,6 +143,9 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 
 ## Rules that apply in every repo
 
+- **Every application ships observable**: logs, metrics and traces to
+  OpenObserve, and RUM when it has a frontend, in the same change that deploys
+  it (`docs/design.md`, Stack).
 - **Everything written is in English**: file contents, file and directory
   names, code comments, commit messages, branch names, PR titles and bodies,
   docs. The conversation with the operator is in Spanish.
