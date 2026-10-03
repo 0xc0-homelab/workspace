@@ -1,4 +1,4 @@
-# Identity and git defaults for every 0xc0-homelab repo.
+# Identity and git defaults for every 0xc0-labs repo.
 # Wired in by a single includeIf in ~/.gitconfig: see CLAUDE.md, "Git identity".
 # Versioned here so the settings travel with the workspace clone.
 

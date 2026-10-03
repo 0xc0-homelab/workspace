@@ -1,6 +1,6 @@
-# 0xc0-homelab — workspace
+# 0xc0-labs — workspace
 
-This directory is the clone of `0xc0-homelab/workspace` and holds the other
+This directory is the clone of `0xc0-labs/workspace` and holds the other
 repos of the organization as subdirectories. Each one is an independent git
 repo with its own remote. **Never make a commit that crosses repos.**
 
@@ -40,7 +40,7 @@ A downstream change is not merged until the upstream one is applied.
 
 ## Tracking — mandatory
 
-The org project board (`github.com/orgs/0xc0-homelab/projects/1`) is the source
+The org project board (`github.com/orgs/0xc0-labs/projects/1`) is the source
 of truth for the state of work. **No work starts without an issue on it.**
 
 1. Before editing anything, find the issue for the task, or open one in the
@@ -153,7 +153,7 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 - **Every workflow with steps of its own lives in `.github`**, as a reusable
   workflow (operator decision, 2026-09-29). Every other repo holds only thin
   callers: their triggers and paths, then
-  `uses: 0xc0-homelab/.github/.github/workflows/<name>.yml@main`. A new
+  `uses: 0xc0-labs/.github/.github/workflows/<name>.yml@main`. A new
   pipeline starts there, never in the repo that uses it.
 - OpenTofu is **always** written as modules, with Google's layout:
   `modules/<name>/` for resources, `environments/<env>/` for roots, which only
