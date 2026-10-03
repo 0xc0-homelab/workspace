@@ -1,13 +1,10 @@
-# Identity and git defaults for every 0xc0-labs repo.
 # Wired in by a single includeIf in ~/.gitconfig: see CLAUDE.md, "Git identity".
-# Versioned here so the settings travel with the workspace clone.
 
 [user]
 	name = sergioaten
 	email = me@sergioaten.cloud
 
 [core]
-	# The org's own SSH key, and only that one, for every repo in this tree.
 	sshCommand = ssh -i ~/.ssh/0xc0-homelab -o IdentitiesOnly=yes
 
 [init]
