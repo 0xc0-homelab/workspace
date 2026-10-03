@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ORG=0xc0-homelab
+ORG=0xc0-labs
 
 clone() {  # $1 = repo name, $2 = local directory
   if [ -d "$2/.git" ]; then

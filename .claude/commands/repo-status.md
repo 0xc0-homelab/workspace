@@ -1,5 +1,5 @@
 ---
-description: Branch and working-tree state of every 0xc0-homelab repo in one shot
+description: Branch and working-tree state of every 0xc0-labs repo in one shot
 allowed-tools: Bash
 ---
 

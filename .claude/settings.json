@@ -33,13 +33,13 @@
     ]
   },
   "enabledPlugins": {
-    "homelab@0xc0-homelab": true
+    "homelab@0xc0-labs": true
   },
   "extraKnownMarketplaces": {
-    "0xc0-homelab": {
+    "0xc0-labs": {
       "source": {
         "source": "github",
-        "repo": "0xc0-homelab/claude-config"
+        "repo": "0xc0-labs/claude-config"
       }
     }
   }
