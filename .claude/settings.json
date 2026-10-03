@@ -33,7 +33,7 @@
     ]
   },
   "enabledPlugins": {
-    "homelab@0xc0-labs": true
+    "0xc0@0xc0-labs": true
   },
   "extraKnownMarketplaces": {
     "0xc0-labs": {

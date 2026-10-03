@@ -11,7 +11,7 @@ Always start `claude` from here for work touching more than one repo.
 | Directory        | Repo              | Contents                                        |
 |------------------|-------------------|-------------------------------------------------|
 | `.github/`       | `.github`         | org Terraform + reusable workflows              |
-| `claude-config/` | `claude-config`   | marketplace and `homelab` plugin (agents, hooks, skills) |
+| `claude-config/` | `claude-config`   | marketplace and `0xc0` plugin (agents, hooks, skills) |
 | `infrastructure/`| `infrastructure`  | Packer + OpenTofu + Ansible + docs              |
 | `gitops/`        | `gitops`          | ArgoCD manifests: `bootstrap/prod/`, `platform/`, `apps/` |
 | `vault/`         | `vault`           | OpenTofu configuration of the cluster's Vault   |
