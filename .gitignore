@@ -1,6 +1,4 @@
-# The other org repos are cloned in here by bootstrap.sh. They are independent
-# git repos and must never be committed into workspace.
-#
+# The other org repos, cloned in by bootstrap.sh; never committed here.
 # /.github/ is load-bearing: without it, another repo's contents would sit at a
 # path GitHub reads for workflows, CODEOWNERS and community health files.
 /.github/
@@ -11,7 +9,6 @@
 /offby1.cc/
 /app-*/
 
-# Personal mise overrides, never shared.
 mise.local.toml
 
 .DS_Store

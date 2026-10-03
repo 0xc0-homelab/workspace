@@ -83,8 +83,8 @@ Besides Proxmox, the host runs the base services, **outside IaC**:
 
 The matrix that decides is the `transit` variable in
 `infrastructure/environments/prod/terraform.tfvars`: the `zone-firewall` module
-computes every rule from it. `infrastructure/docs/zones.md` explains it. This
-table is the target once the cluster exists:
+computes every rule from it. `infrastructure/docs/zones.md` explains it. In
+short:
 
 | From     | To       | Ports                                                   |
 |----------|----------|---------------------------------------------------------|
@@ -100,7 +100,7 @@ table is the target once the cluster exists:
 | platform | node     | 9100 (node metrics)                                     |
 
 Inside `platform`, the cluster needs more than TCP (VXLAN for the pod network,
-VRRP for keepalived), so the matrix gains a protocol per entry.
+VRRP for keepalived), so each entry in the matrix can name its protocol.
 
 The node is on a DROP policy: 22, 443 and 8006 from the admin zones, 22 never
 from ci, the metrics port from platform, and from the internet only SSH, as
@@ -131,18 +131,18 @@ playbook (operator decision, 2026-09-29).
   record (a proxied CNAME to the tunnel), which it does only for an HTTPRoute
   annotated `gateway.0xc0.cc/public: "true"`. Only zones in the tunnel's own
   Cloudflare account can be public: a CNAME to it from another account's zone
-  (`offby1.cc`) fails at the edge (1014). external-dns comes ahead of phase 6
+  (`offby1.cc`) fails at the edge (1014). external-dns is part of the platform
   on purpose (operator decision, 2026-09-29).
 - **Portals** (OpenObserve, ArgoCD, Headlamp): internal, reached only over WARP.
-  None has a public record (operator decision, 2026-09-29): publishing one
-  behind Cloudflare Access is deferred.
+  None has a public record, and none is published behind Cloudflare Access
+  (operator decision, 2026-09-29).
 - **Internal services** (operator decision, 2026-09-30): a path of their own,
   separated by network. A second VIP on the LBs, `10.10.4.9`, sends its 443
   to Traefik's `internal` entrypoint; Cloudflare Gateway resolves every
   `*.int.0xc0.cc` name to it for WARP devices, and those names have no public
   record. The public tunnel only ever targets the public VIP, so nothing from
-  the internet reaches the internal path. Headlamp, the Kubernetes UI, is the
-  first, at `headlamp.int.0xc0.cc`, logged into with a short-lived token. The
+  the internet reaches the internal path. Headlamp, the Kubernetes UI, is
+  one, at `headlamp.int.0xc0.cc`, logged into with a short-lived token. The
   internal path has no WAF: CrowdSec's bouncer is on the public entrypoint
   only.
 - **Admin**: WARP → admin tunnel → either vm-access connector → any zone. The
@@ -152,7 +152,7 @@ playbook (operator decision, 2026-09-29).
   SSH), OpenTofu, Packer and every Ansible playbook alike (operator decision,
   2026-09-29): `--check`/plan on the PR, the real run on merge behind manual
   approval. Nothing is applied from the laptop. What runs in the cluster goes
-  through ArgoCD, from `gitops/clusters/prod/`.
+  through ArgoCD, from the `gitops` repo.
 - **Egress**: VM → `.1` of its zone → NAT behind the public IP.
 
 ## Stack
@@ -186,15 +186,15 @@ secret lives in `gitops`, not even encrypted. Vault is unsealed by hand after a
 restart. A cluster built from nothing needs Vault restored first, from PBS:
 the accepted risk below.
 
-**Vault's shape** (installed ahead of closing phase 2, at the operator's
-request, 2026-09-30; gitops#33): three servers in HA over integrated storage
-(Raft), one per RKE2 node, each on a Longhorn volume. Shamir seal: the keys
+**Vault's shape** (at the operator's request, 2026-09-30; gitops#33): three
+servers in HA over integrated storage (Raft), one per RKE2 node, each on a
+Longhorn volume. Shamir seal: the keys
 live in the operator's password manager and offline, never in the cluster or
 any repo. It is on the WARP-only path, `https://vault.int.0xc0.cc`; Traefik ends
 TLS, and inside the cluster the API is plain HTTP behind NetworkPolicies
-(Raft's port is TLS with Vault's own certificates; TLS on the API is a
-follow-up). No agent injector: Vault Secrets Operator reads it. The init and
-unseal runbook is `gitops/platform/vault/README.md`.
+(Raft's port is TLS with Vault's own certificates; there is no TLS between
+pods on the API). No agent injector: Vault Secrets Operator reads it. The
+init and unseal runbook is `gitops/platform/vault/README.md`.
 
 **OpenObserve for metrics, logs and traces** (operator decision, 2026-10-01;
 gitops#44), the lightest way to have all three: one backend, single node, on
@@ -249,28 +249,32 @@ owner; the `vault` repo defines engines, roles and policies, never values. A
 secret more than one consumer uses is not copied: it lives once, at
 `<engine>/shared/<name>`, and each consumer's policy grants it by name
 (operator decision, 2026-09-30).
-Dynamic engines (`pki/`, `database/`) come when something needs them. The
-full standard is in the `vault` repo's README. In phase 6, `apps/` takes one
-templated policy for every namespace, which reads the path of the namespace
-the login comes from, instead of one policy each (noted 2026-10-01).
+There are no dynamic engines (`pki/`, `database/`); one is added when
+something needs it. `apps/` has one Kubernetes auth role, `apps`, for every
+namespace labelled `vault.0xc0.cc/apps`, and one templated policy, which
+reads the path of the namespace the login comes from instead of one policy
+each (noted 2026-10-01), plus `apps/shared/openobserve-rum` by name. The
+full standard is in the `vault` repo's README.
 
 **Vault is configured with OpenTofu from its own repo, `vault`** (operator
 decision, 2026-09-30; .github#6): auth methods and roles, policies, secret
 engines. It is downstream of `gitops`, which deploys Vault, so the order stays
-linear: `.github → infrastructure → gitops → vault → app-*`. Its CI logs in
-with the job's GitHub OIDC token (JWT auth, `hashicorp/vault-action`): no Vault
-credential is stored. A PR plans read-only from any ref (role
-`terraform-plan`); only `main`, inside the `production` environment that waits
-for the operator, writes (role `terraform`). Neither policy touches a stored
-secret. The CI VMs reach Vault on the internal VIP (`ci → platform: 443`).
+linear: `.github → infrastructure → gitops → vault → offby1.cc and app-*`.
+Its CI logs in with the job's GitHub OIDC token (JWT auth,
+`hashicorp/vault-action`): no Vault credential is stored. A PR plans
+read-only from any ref (role `terraform-plan`); only `main`, inside the
+`production` environment that waits for the operator, writes (role
+`terraform`). Neither policy touches a stored secret. The CI VMs
+reach Vault on the internal VIP (`ci → platform: 443`).
 The CI can only log in once its auth method and roles exist, so **the first
 apply of `vault` is local**: the operator runs it once, over WARP, with the
 root token (operator decision, 2026-09-30). It is the one exception to nothing
 being applied from the laptop; every change after it goes through the
-pipeline, and the root token is revoked once another admin way in exists.
+pipeline. The root token is kept, outside Vault, with the unseal keys
+(operator decision, 2026-10-04).
 
 **The ingress is Traefik, with the Gateway API, and the WAF is CrowdSec**
-(operator decision, 2026-09-29). open-appsec was the plan, and it is deferred:
+(operator decision, 2026-09-29). open-appsec was the plan, and it was set aside:
 every Kubernetes integration it has runs on something retired or unmaintained
 (ingress-nginx, retired in March 2026; Kong, with no free images since 3.10;
 Istio 1.23-1.26 and Envoy 1.32-1.34, all end of life; APISIX on unmaintained
@@ -279,13 +283,16 @@ leaves, application attacks on public apps without Access, is CrowdSec's:
 Traefik's bouncer checks every request against CrowdSec's AppSec component
 (virtual-patching rules, no CRS to tune) and its community blocklist, shared in
 return for the attacking IPs, never request contents. The load balancers stay
-layer 4, with no WAF of their own. open-appsec is reconsidered when public
-applications arrive, in phase 6.
+layer 4, with no WAF of their own. open-appsec can be reconsidered for the
+public applications.
 
 **Longhorn is the cluster's storage** (operator decision, 2026-09-29): the
 default `StorageClass`, three replicas on different nodes, on each RKE2 node's
 two data disks, the agents' included. It has no backup target of its own: **PBS backs the VMs up whole**,
 data disks included, and that is what the timed restore tests.
+
+**Non-negotiable: a tested restore.** If the RTO is not measured in writing,
+it is not tested.
 
 **One shared MariaDB for the applications that need MySQL** (operator
 decision, 2026-10-02; gitops#71): one server in `platform/mariadb`, one
@@ -297,8 +304,8 @@ server whole, every database at once, so a nightly logical dump per database
 lets one application be restored alone. An application that needs another
 engine version gets its own server, as the exception.
 
-**Mautic comes ahead of phase 6** (operator decision, 2026-10-02;
-gitops#73), as Vault came ahead of closing phase 2: one instance, no tenants.
+**Mautic runs as one instance, no tenants** (operator decision, 2026-10-02;
+gitops#73).
 The official image's three roles (web, cron, worker) run as containers of one
 pod, sharing one Longhorn RWO volume, so there is no RWX volume and no NFS
 share-manager. Its database is in the shared MariaDB. It is public at
@@ -310,36 +317,8 @@ installer, the API) answers 403 there, with no hint of the internal name
 
 Zones are Proxmox SDN: one Simple zone, a VNet and a subnet per zone, the host
 as `.1` and SNAT for egress, all in OpenTofu through `bpg/proxmox`. Zones
-spanning nodes come with node 2. Native Proxmox firewall through the same
+spanning nodes do not exist: there is one node. Native Proxmox firewall through the same
 provider.
-
-## Phases
-
-vm-ci and Packer belong to phase 1: CI needs a runner inside the network so
-RustFS stays closed. The cluster comes in phase 2 (operator decision,
-2026-09-24): everything after phase 1 runs in it.
-
-1. **Base** — Proxmox, zones, NAT, the templates baked with Packer from the
-   official Debian cloud image, the vm-access pair, vm-ci with the self-hosted
-   runners, the zone firewall and the node firewall on DROP. SOPS working.
-   Rescue and WARP tested.
-2. **Cluster** — the Rocky template chain, the RKE2 cluster, the HAProxy LB
-   with the public tunnel, ArgoCD, Longhorn, the ingress (Traefik) with its WAF
-   (CrowdSec), cert-manager with Let's Encrypt, external-dns. Backups through
-   PBS with a timed restore.
-3. **Platform** — Vault in the cluster with OIDC and a progressive migration
-   off SOPS, credential rotation with it; OpenObserve for metrics, logs and
-   traces, with alerts to the phone; data services (Postgres, MariaDB, Redis)
-   in the cluster.
-4. **Resilience** — Hetzner Cloud VM, vSwitch, external uptime checks.
-5. **HA** — node 2, QDevice, storage replication, SDN zones across both nodes,
-   the three RKE2 servers spread over the two nodes. Node 1 has no ZFS (mdadm RAID
-   0), so the replication model is redesigned here.
-6. **Applications** — the `app-*` repos, with test→prod promotion of the same
-   digest.
-
-**Non-negotiable: the tested restore in phase 2.** If the RTO is not measured
-in writing, it is not tested.
 
 ## Templates
 
@@ -396,7 +375,7 @@ is gone.
 |---------------------|------------------------------------------------------|
 | WireGuard           | Cloudflare Access + WARP already covers admin access |
 | Coraza              | the OWASP CRS needs hand-tuning; CrowdSec's virtual patching does not |
-| open-appsec, for now | every Kubernetes integration runs on retired or unmaintained pieces; reconsidered in phase 6 (operator decision, 2026-09-29) |
+| open-appsec, for now | every Kubernetes integration runs on retired or unmaintained pieces; can be reconsidered for the public applications (operator decision, 2026-09-29) |
 | kube-vip, MetalLB    | the load balancer VMs keep the VIP for WARP and the API (operator decision, 2026-09-29) |
 | BunkerWeb           | stores its configuration in SQLite                   |
 | OPNsense, VyOS      | fragile network hop and immature providers           |
@@ -407,7 +386,7 @@ is gone.
 | Prometheus + Grafana, Loki, Tempo | replaced by OpenObserve, one light backend for the three signals (operator decision, 2026-10-01) |
 | VictoriaMetrics + VictoriaLogs | lighter than LGTM, but three backends to run where OpenObserve is one (operator decision, 2026-10-01) |
 | Two K8s clusters    | same hardware, adds no isolation; one cluster, separated by namespace (operator decision, 2026-09-24) |
-| A VM per role after phase 1 (vm-edge, vm-apps, vm-data, vm-vault, vm-platform) | replaced by the cluster (operator decision, 2026-09-24) |
+| A VM per role (vm-edge, vm-apps, vm-data, vm-vault, vm-platform) | replaced by the cluster (operator decision, 2026-09-24) |
 | Docker Compose on VMs | replaced by the cluster; `gitops` holds ArgoCD manifests |
 | Bug bounty lab      | reserved range, out of scope                         |
 | Flux                | operator decision (2026-09-22): GitOps is ArgoCD     |
@@ -415,7 +394,8 @@ is gone.
 
 ## Accepted risks
 
-- Single piece of hardware until phase 5: a hardware failure is an RTO of hours.
+- Single piece of hardware, with no second node: a hardware failure is an RTO
+  of hours.
 - Disks in RAID 0 (operator decision, 2026-09-23): one NVMe failure loses the
   whole node. Recovery is a reinstall plus a restore from PBS on the Storage
   Box, which is why that restore has to be tested and timed.
@@ -461,5 +441,7 @@ is gone.
 ## Repos and policies
 
 `infrastructure` and `.github`: `main` only, PR required, apply behind manual
-approval. `app-*`: test→prod promotion of the same digest.
-ArgoCD points at `gitops/clusters/prod/`.
+approval. Applications: each decides whether it has a test environment; one
+that does promotes test→prod with the same digest, never a rebuild.
+ArgoCD points at `gitops/bootstrap/prod/`, which deploys `platform/` and
+`apps/`.
