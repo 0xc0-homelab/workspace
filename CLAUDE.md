@@ -150,7 +150,7 @@ declared in the repo's `mise.toml` with a pinned version, and that is the fix.
 - OpenTofu is **always** written as modules, with Google's layout:
   `modules/<name>/` for resources, `environments/<env>/` for roots, which only
   call modules. Each root has its own state key,
-  `homelab/<repo>/<environment>.tfstate` in RustFS, never a shared one. Full
+  `0xc0/<repo>/<environment>.tfstate` in RustFS, never a shared one. Full
   conventions in `.github/README.md`.
 - Secrets live in Vault (`vault` repo, README), never in a repo, not even
   encrypted. A file holding sensitive material is a bug. The operator writes and
